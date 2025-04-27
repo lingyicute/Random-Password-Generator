@@ -116,7 +116,7 @@ body {
   } 
 
   .password-generator { 
-    padding: 2rem 0 4rem; 
+    padding: 4rem 0 4rem; 
     display: flex; 
     align-items: center; 
     flex-direction: column; 
