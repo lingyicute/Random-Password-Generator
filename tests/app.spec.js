@@ -292,18 +292,35 @@ test('keeps copy available for a manually entered password after a generator fai
   await expect(page.locator('.copy-feedback')).toHaveText('已复制');
 });
 
-test('does not generate twice when a slider debounce is still pending', async ({ page }) => {
-  // Simulate a drag: only 'input' events, which schedule a debounced generation.
-  await page.evaluate(() => {
+test('cancels a pending slider debounce when an explicit generate happens', async ({ page }) => {
+  // A drag fires 'input' (debounced) and is followed by a direct interaction
+  // (a checkbox here) that generates immediately. The previous version of this
+  // test waited for actionability before reading the value back, which takes
+  // longer than the 50ms debounce - it passed with and without the fix, so it
+  // could never catch a regression. Count the actual writes instead.
+  const writes = await page.evaluate(async () => {
+    const input = document.querySelector('.password');
+    const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), 'value');
+    let count = 0;
+    Object.defineProperty(input, 'value', {
+      configurable: true,
+      get() { return descriptor.get.call(this); },
+      set(value) { count++; descriptor.set.call(this, value); },
+    });
+
     const slider = document.querySelector('input[type="range"]');
     slider.value = '30';
     slider.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-  await page.locator('#specials').check();
 
-  const generated = await page.locator('.password').inputValue();
-  await page.waitForTimeout(200);
-  await expect(page.locator('.password')).toHaveValue(generated);
+    const specials = document.querySelector('#specials');
+    specials.checked = true;
+    specials.dispatchEvent(new Event('change', { bubbles: true }));
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return count;
+  });
+
+  expect(writes).toBe(1);
 });
 
 test('renders responsive 404 page with working home link', async ({ page }) => {
