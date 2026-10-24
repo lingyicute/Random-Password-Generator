@@ -482,6 +482,23 @@ function generatePassword() {
             passwordChars[i] = passwordChars[j];
             passwordChars[j] = temp;
         }
+    } catch (error) {
+        // A present-but-failing Web Crypto implementation is no safer than a
+        // missing one. Never fall back to Math.random() or expose partial output.
+        console.error('安全随机数生成失败:', error);
+        if (passwordInput) passwordInput.value = '';
+        if (strengthLabel) {
+            updateStrengthLabel(0);
+            strengthLabel.textContent = '不可用';
+        }
+        if (copyButton) {
+            copyButton.classList.add('disabled');
+            copyButton.setAttribute('aria-disabled', 'true');
+            if (copyButton.feedback) {
+                copyButton.feedback.textContent = '安全随机数生成失败，请更换浏览器或环境后重试。';
+            }
+        }
+        return;
     } finally {
         randomPool.fill(0);
         randomPoolOffset = randomPool.length;

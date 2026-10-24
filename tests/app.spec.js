@@ -100,6 +100,20 @@ test('shows success only after the clipboard write succeeds and resets state on 
   await expect(copyBtn).not.toHaveClass(/copied/);
 });
 
+test('fails closed if Web Crypto exists but refuses to provide random bytes', async ({ page }) => {
+  await page.evaluate(() => {
+    Object.defineProperty(window.crypto, 'getRandomValues', {
+      configurable: true,
+      value: () => { throw new Error('entropy unavailable'); },
+    });
+  });
+
+  await page.locator('.icon-refresh').click();
+  await expect(page.locator('.password')).toHaveValue('');
+  await expect(page.locator('#pwd-copy-btn')).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.locator('.copy-feedback')).toHaveText('安全随机数生成失败，请更换浏览器或环境后重试。');
+});
+
 test('updates strength live on manual edits and penalizes repeated characters', async ({ page }) => {
   const password = page.locator('.password');
   const badge = page.locator('#password-strength');
