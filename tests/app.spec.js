@@ -266,6 +266,9 @@ test('renders responsive 404 page with working home link', async ({ page }) => {
   const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(scrollWidth).toBeLessThanOrEqual(320);
 
+  await expect(page.locator('h1')).toHaveCount(1);
+  await expect(page.locator('h1')).toHaveText(/页面未找到/);
+
   await page.locator('.back-home').click();
   await expect(page.locator('h1')).toContainText('随机密码生成器');
 });

@@ -40,6 +40,21 @@
       height: auto;
     }
 
+    .error-title {
+      /* The "404" artwork already carries the visual headline; keep an <h1> for
+         document structure and screen readers without duplicating it visually. */
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+
     .error-message {
       margin: 0;
       font-size: 1rem;
@@ -194,6 +209,7 @@
       </g>
     </g>
   </svg>
+  <h1 class="error-title">页面未找到（404）</h1>
   <p class="error-message">抱歉，您访问的页面不存在。</p>
   <a class="back-home" href="./">返回首页</a>
 </main>
