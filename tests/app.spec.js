@@ -183,7 +183,7 @@ test('keeps length controls within their supported bounds and syncs button state
 });
 
 test('keeps the main controls within representative viewport widths', async ({ page }) => {
-  for (const width of [320, 375, 768, 991, 992, 1024, 1279, 1280, 1366, 1920]) {
+  for (const width of [280, 320, 360, 375, 390, 414, 768, 991, 992, 1024, 1279, 1280, 1366, 1440, 1920]) {
     await page.setViewportSize({ width, height: 900 });
     const bounds = await page.evaluate(() => {
       const selectors = [
@@ -194,13 +194,17 @@ test('keeps the main controls within representative viewport widths', async ({ p
         '.password-generator .slider-settings',
         '.password-generator .complexity-checkbox',
       ];
-      return selectors.map(selector => {
-        const rect = document.querySelector(selector).getBoundingClientRect();
-        return { selector, left: rect.left, right: rect.right, width: rect.width };
-      });
+      return {
+        documentWidth: document.documentElement.scrollWidth,
+        elements: selectors.map(selector => {
+          const rect = document.querySelector(selector).getBoundingClientRect();
+          return { selector, left: rect.left, right: rect.right, width: rect.width };
+        }),
+      };
     });
 
-    for (const rect of bounds) {
+    expect(bounds.documentWidth, `${width}px: page should not scroll horizontally`).toBeLessThanOrEqual(width);
+    for (const rect of bounds.elements) {
       expect(rect.width, `${width}px: ${rect.selector} should have a usable width`).toBeGreaterThan(0);
       expect(rect.left, `${width}px: ${rect.selector} should not overflow on the left`).toBeGreaterThanOrEqual(-1);
       expect(rect.right, `${width}px: ${rect.selector} should not overflow on the right`).toBeLessThanOrEqual(width + 1);
