@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
    <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
       <title>随机密码生成器 by lingyicute - 精锻数字符印，永固赛博边关</title>
       <meta name="description" content="创建强大且安全的密码，保护您的在线账户安全。Made with ❤️ by lingyicute">
       <link rel="stylesheet" href="./style.css">
+      <link rel="preload" href="./fonts/MierB03-SubsetEng-Regular.woff2" as="font" type="font/woff2" crossorigin>
+      <link rel="preload" href="./fonts/MierB03-SubsetEng-ExtraBold.woff2" as="font" type="font/woff2" crossorigin>
       <link rel="apple-touch-icon" sizes="180x180" href="./images/icon/apple.png" />
       <link rel="shortcut icon" href="./favicon.ico" sizes="32x32" type="image/x-icon">
       <link rel="icon" href="./images/icon/192.png" sizes="192x192" type="image/png" />
@@ -13,155 +15,185 @@
       <style>
          .loading-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             background-color: #ffffff;
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 9999;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.4s ease;
          }
          .loading-overlay img {
             width: 80px;
             height: 80px;
          }
+         @media (prefers-reduced-motion: reduce) {
+            .loading-overlay {
+               transition: none;
+            }
+         }
       </style>
+      <noscript>
+         <style>
+            .loading-overlay {
+               display: none !important;
+            }
+         </style>
+      </noscript>
       <script src="./app.js" defer></script>
    </head>
    <body>
       <!-- 加载遮罩层 -->
-      <div class="loading-overlay" id="loadingOverlay">
-         <img src="./images/loading.svg" alt="加载中..." />
+      <div class="loading-overlay" id="loadingOverlay" aria-hidden="true">
+         <img src="./images/loading.svg" alt="" width="80" height="80" />
       </div>
-      
-      <section class="password-generator bg-white snipcss-HkWhy">
-          <div class="container">
-              <div class="row justify-content-center">
+
+      <main>
+         <section class="password-generator bg-white snipcss-HkWhy">
+            <div class="container">
+               <div class="row justify-content-center">
                   <div class="col-12 col-xl-10">
-                      <h1 class="mb-16 text-center"><span>随机密码生成器</span></h1>
-                      <p class="body-2 mb-32 mb-lg-40 text-center">精锻数字符印，永固赛博边关</p>
-                      <div data-v-1f0937b5="" class="generator-container">
-                          <div data-v-1f0937b5="" class="image-container"><img src="./images/a.svg" class="strength-level"></div>
-                          <div data-v-1f0937b5="" class="generator">
-                              <div data-v-1f0937b5="" class="input-container mb-40 mb-lg-56">
-                                  <div data-v-1f0937b5="" class="generator-input mb-16 mb-lg-0 me-lg-24">
-                                      <div data-v-1f0937b5="" class="form-control-wrapper form-floating"><input data-v-1f0937b5="" type="text" class="form-control size-lg form-icon-after body-2 password"> <label data-v-1f0937b5="" class="label label-sm tagline-sm bg-green-bright">很强</label>
-                                          <div data-v-1f0937b5="" role="img" class="icon icon-24 icon-refresh"></div>
-                                      </div>
-                                  </div>
-                                  <div data-v-1f0937b5="" class="btn-wrapper" title="Copied"><a id="pwd-copy-btn" class="btn full size-md theme-blue copy-btn" href="javascript:void(0);">复制</a></div>
+                     <h1 class="mb-16 text-center"><span>随机密码生成器</span></h1>
+                     <p class="body-2 mb-32 mb-lg-40 text-center">精锻数字符印，永固赛博边关</p>
+                     <div class="generator-container">
+                        <div class="image-container"><img src="./images/a.svg" class="strength-level" alt="" width="416" height="312"></div>
+                        <div class="generator">
+                           <div class="input-container">
+                              <div class="generator-input mb-16 mb-lg-0 me-lg-24">
+                                 <div class="form-control-wrapper form-floating">
+                                    <input id="password-output" type="text" class="form-control size-lg form-icon-after body-2 password" aria-label="生成的随机密码" aria-describedby="password-strength" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+                                    <label id="password-strength" class="label label-sm tagline-sm bg-green-bright" aria-live="polite">很强</label>
+                                    <div role="button" tabindex="0" aria-label="重新生成密码" title="重新生成密码" class="icon icon-24 icon-refresh"></div>
+                                 </div>
                               </div>
-                              <div data-v-1f0937b5="" class="generator-settings">
-                                  <div data-v-1f0937b5="" class="length-settings">
-                                      <div data-v-1f0937b5=""><label data-v-1f0937b5="" for="length" class="first body-1 mb-16 mb-lg-0 me-lg-16 me-xl-48"><span data-v-1f0937b5="">密码长度</span>: <span data-v-1f0937b5="" class="ms-8 ms-lg-16 fw-bold body-2">15</span></label></div>
-                                      <div data-v-1f0937b5="" class="slider-settings">
-                                          <button data-v-1f0937b5="" class="button-circle outline size-md theme-dark shadow-none me-12">
-                                              <div data-v-1f0937b5="" role="img" class="icon icon-16 icon-minus"></div>
-                                          </button>
-                                          <div data-v-1f0937b5="" class="slider-container">
-                                              <input data-v-1f0937b5="" type="range" min="1" max="50" value="15" class="slider">
-                                              <div data-v-1f0937b5="" id="slider-border-part" style="width: 30%"></div>
-                                          </div>
-                                          <button data-v-1f0937b5="" class="button-circle outline size-md theme-dark shadow-none ms-12">
-                                              <div data-v-1f0937b5="" role="img" class="icon icon-16 icon-plus"></div>
-                                          </button>
-                                      </div>
-                                  </div>
-                                  <div data-v-1f0937b5="" class="complexity-settings">
-                                      <div data-v-1f0937b5=""><label data-v-1f0937b5="" class="first body-1  mb-16 mb-lg-0 me-xl-24"><span data-v-1f0937b5="">使用的字符</span>: </label></div>
-                                      <div data-v-1f0937b5="" class="complexity-checkbox">
-                                          <div data-v-301781ac="" data-v-1f0937b5="">
-                                              <div data-v-301781ac="" class="custom-control custom-checkbox"><input data-v-301781ac="" type="checkbox" id="uppercase" class="custom-control-input" checked> <label data-v-301781ac="" for="uppercase" class="custom-control-label body-1 fw-bold">ABC</label></div>
-                                          </div>
-                                          <div data-v-301781ac="" data-v-1f0937b5="">
-                                              <div data-v-301781ac="" class="custom-control custom-checkbox"><input data-v-301781ac="" type="checkbox" id="lowercase" class="custom-control-input" checked> <label data-v-301781ac="" for="lowercase" class="custom-control-label body-1 fw-bold">abc</label></div>
-                                          </div>
-                                          <div data-v-301781ac="" data-v-1f0937b5="">
-                                              <div data-v-301781ac="" class="custom-control custom-checkbox"><input data-v-301781ac="" type="checkbox" id="numbers" class="custom-control-input" checked> <label data-v-301781ac="" for="numbers" class="custom-control-label body-1 fw-bold">123</label></div>
-                                          </div>
-                                          <div data-v-301781ac="" data-v-1f0937b5="">
-                                              <div data-v-301781ac="" class="custom-control custom-checkbox"><input data-v-301781ac="" type="checkbox" id="specials" class="custom-control-input"> <label data-v-301781ac="" for="specials" class="custom-control-label body-1 fw-bold">#$&amp;</label></div>
-                                          </div>
-                                      </div>
-                                  </div>
+                              <div class="btn-wrapper"><button type="button" id="pwd-copy-btn" class="btn full size-md theme-blue copy-btn">复制</button></div>
+                           </div>
+                           <p class="copy-feedback" role="status" aria-live="polite"></p>
+                           <div class="generator-settings">
+                              <div class="length-settings">
+                                 <div><label for="length" class="first body-1 mb-16 mb-lg-0 me-lg-16 me-xl-48"><span>密码长度</span>: <span class="ms-8 ms-lg-16 fw-bold body-2">15</span></label></div>
+                                 <div class="slider-settings">
+                                    <button type="button" class="button-circle outline size-md theme-dark shadow-none me-12" aria-label="减少密码长度">
+                                       <div aria-hidden="true" class="icon icon-16 icon-minus"></div>
+                                    </button>
+                                    <div class="slider-container">
+                                       <input id="length" type="range" min="1" max="50" value="15" class="slider">
+                                       <div id="slider-border-part" aria-hidden="true"></div>
+                                    </div>
+                                    <button type="button" class="button-circle outline size-md theme-dark shadow-none ms-12" aria-label="增加密码长度">
+                                       <div aria-hidden="true" class="icon icon-16 icon-plus"></div>
+                                    </button>
+                                 </div>
                               </div>
-                          </div>
-                      </div>
+                              <div class="complexity-settings">
+                                 <div><span id="charset-group-label" class="first body-1 mb-16 mb-lg-0 me-xl-24"><span>使用的字符</span>: </span></div>
+                                 <div class="complexity-checkbox" role="group" aria-labelledby="charset-group-label">
+                                    <div>
+                                       <div class="custom-control custom-checkbox"><input type="checkbox" id="uppercase" class="custom-control-input" checked> <label for="uppercase" class="custom-control-label body-1 fw-bold" title="大写字母 (A-Z)">ABC</label></div>
+                                    </div>
+                                    <div>
+                                       <div class="custom-control custom-checkbox"><input type="checkbox" id="lowercase" class="custom-control-input" checked> <label for="lowercase" class="custom-control-label body-1 fw-bold" title="小写字母 (a-z)">abc</label></div>
+                                    </div>
+                                    <div>
+                                       <div class="custom-control custom-checkbox"><input type="checkbox" id="numbers" class="custom-control-input" checked> <label for="numbers" class="custom-control-label body-1 fw-bold" title="数字 (0-9)">123</label></div>
+                                    </div>
+                                    <div>
+                                       <div class="custom-control custom-checkbox"><input type="checkbox" id="specials" class="custom-control-input"> <label for="specials" class="custom-control-label body-1 fw-bold" title="特殊字符 (!@#$...)">#$&amp;</label></div>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
                   </div>
-              </div>
-          </div>
-      </section>
-      <section class="section-py bg-orange-faint snipcss-DRkZf">
-          <div class="container">
-              <div class="row justify-content-center text-center">
+               </div>
+            </div>
+         </section>
+         <section class="section-py bg-orange-faint snipcss-DRkZf">
+            <div class="container">
+               <div class="row justify-content-center text-center">
                   <div class="col-12">
-                      <h2 class="mb-40 mb-lg-56">什么因素决定密码强度？</h2>
+                     <h2 class="mb-40 mb-lg-56">什么因素决定密码强度？</h2>
                   </div>
-              </div>
-              <div class="row justify-content-center">
+               </div>
+               <div class="row justify-content-center">
                   <div class="col-12 col-lg-3">
-                      <div data-cmp-name="feature-item" class="feature-item size-sm centered border-orange-pale bg-orange-off-white">
-                          <div class="feature-item-img"><img src="./images/password-checkmark--key-tick.svg" alt="" loading="lazy"></div>
-                          <div class="feature-item-body">
-                              <div class="h7 feature-item-title">长度</div>
-                              <div class="body-4 feature-item-text">密码越长，安全性越高。强密码应至少包含10个字符。</div>
-                          </div>
-                      </div>
-                  </div>
-                  <div class="col-12 col-lg-3">
-                      <div data-cmp-name="feature-item" class="feature-item size-sm centered border-orange-pale bg-orange-off-white">
-                          <div class="feature-item-img"><img src="./images/https-encryption--lock.svg" alt="" loading="lazy"></div>
-                          <div class="feature-item-body">
-                              <div class="h7 feature-item-title">复杂性</div>
-                              <div class="body-4 feature-item-text">强密码应使用字母、数字、大小写和符号的组合，组成不易猜测的字符串。</div>
-                          </div>
-                      </div>
+                     <div data-cmp-name="feature-item" class="feature-item size-sm centered border-orange-pale bg-orange-off-white">
+                        <div class="feature-item-img"><img src="./images/password-checkmark--key-tick.svg" alt="" width="80" height="80" loading="lazy"></div>
+                        <div class="feature-item-body">
+                           <div class="h7 feature-item-title">长度</div>
+                           <div class="body-4 feature-item-text">密码越长，安全性越高。强密码应至少包含10个字符。</div>
+                        </div>
+                     </div>
                   </div>
                   <div class="col-12 col-lg-3">
-                      <div data-cmp-name="feature-item" class="feature-item size-sm centered border-orange-pale bg-orange-off-white">
-                          <div class="feature-item-img"><img src="./images/sensitive-data-shield--document-fingerprint.svg" alt="" loading="lazy"></div>
-                          <div class="feature-item-body">
-                              <div class="h7 feature-item-title">唯一性</div>
-                              <div class="body-4 feature-item-text">每个账户应使用唯一的密码，以抵御单一密码泄漏时的撞库攻击。</div>
-                          </div>
-                      </div>
+                     <div data-cmp-name="feature-item" class="feature-item size-sm centered border-orange-pale bg-orange-off-white">
+                        <div class="feature-item-img"><img src="./images/https-encryption--lock.svg" alt="" width="80" height="80" loading="lazy"></div>
+                        <div class="feature-item-body">
+                           <div class="h7 feature-item-title">复杂性</div>
+                           <div class="body-4 feature-item-text">强密码应使用字母、数字、大小写和符号的组合，组成不易猜测的字符串。</div>
+                        </div>
+                     </div>
                   </div>
-              </div>
-          </div>
-          
-          <div class="container mt-5 pt-5">
-              <hr class="my-4" style="border-top: 1px solid #dee2e6; margin-top: 8rem; margin-bottom: 2rem;">
-              <p class="body-4 text-muted text-center pb-4 mb-4">Copyright &copy; 2025-2026 lingyicute · Made with love ❤️</p>
-          </div>
-      </section>
-      
+                  <div class="col-12 col-lg-3">
+                     <div data-cmp-name="feature-item" class="feature-item size-sm centered border-orange-pale bg-orange-off-white">
+                        <div class="feature-item-img"><img src="./images/sensitive-data-shield--document-fingerprint.svg" alt="" width="80" height="80" loading="lazy"></div>
+                        <div class="feature-item-body">
+                           <div class="h7 feature-item-title">唯一性</div>
+                           <div class="body-4 feature-item-text">每个账户应使用唯一的密码，以抵御单一密码泄漏时的撞库攻击。</div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            <footer class="container">
+               <hr style="margin-top: 5rem; margin-bottom: 2rem;">
+               <p class="body-4 text-muted text-center">Copyright &copy; 2025-2026 lingyicute · Made with love ❤️</p>
+            </footer>
+         </section>
+      </main>
+
       <script>
          document.addEventListener('DOMContentLoaded', function() {
             const loadingOverlay = document.getElementById('loadingOverlay');
+            if (!loadingOverlay) return;
+
+            const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             const startTime = Date.now();
-            
-            // 确保遮罩层至少显示300ms
+            let hidden = false;
+
             function hideLoadingOverlay() {
+               if (hidden) return;
+               hidden = true;
+
                const elapsedTime = Date.now() - startTime;
                const remainingTime = Math.max(0, 300 - elapsedTime);
-               
+
                setTimeout(function() {
+                  loadingOverlay.style.pointerEvents = 'none';
+                  if (prefersReducedMotion) {
+                     loadingOverlay.style.display = 'none';
+                     return;
+                  }
                   loadingOverlay.style.opacity = '0';
                   setTimeout(function() {
                      loadingOverlay.style.display = 'none';
-                  }, 500); // 等待淡出动画完成后隐藏元素
+                  }, 400);
                }, remainingTime);
             }
-            
-            // 检查所有资源是否已加载
-            if (document.readyState === 'complete') {
-               hideLoadingOverlay();
-            } else {
-               window.addEventListener('load', hideLoadingOverlay);
-            }
+
+            const windowLoaded = document.readyState === 'complete'
+               ? Promise.resolve()
+               : new Promise(function(resolve) {
+                    window.addEventListener('load', resolve, { once: true });
+                 });
+            const fontsLoaded = document.fonts && document.fonts.ready
+               ? document.fonts.ready.catch(function() {})
+               : Promise.resolve();
+
+            Promise.all([windowLoaded, fontsLoaded]).then(hideLoadingOverlay);
+            setTimeout(hideLoadingOverlay, 8000);
          });
       </script>
    </body>
