@@ -1,0 +1,14 @@
+{
+  "name": "random-password-generator",
+  "version": "1.0.0",
+  "description": "随机密码生成器 by lingyicute - 精锻数字符印，永固赛博边关",
+  "author": "lingyicute",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  }
+}
