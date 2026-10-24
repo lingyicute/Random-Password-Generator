@@ -173,12 +173,13 @@ test('keeps length controls within their supported bounds and syncs button state
   await expect(minusBtn).not.toHaveClass(/disabled/);
   await expect(plusBtn).not.toHaveClass(/disabled/);
 
-  await slider.fill('50');
+  await expect(slider).toHaveAttribute('max', '64');
+  await slider.fill('64');
   await slider.dispatchEvent('change');
   await expect(plusBtn).toHaveClass(/disabled/);
   await plusBtn.click();
-  await expect(page.locator('.length-settings .fw-bold')).toHaveText('50');
-  await expect(page.locator('.password')).toHaveValue(/^.{50}$/);
+  await expect(page.locator('.length-settings .fw-bold')).toHaveText('64');
+  await expect(page.locator('.password')).toHaveValue(/^.{64}$/);
 });
 
 test('keeps the main controls within representative viewport widths', async ({ page }) => {

@@ -1,5 +1,5 @@
 const MIN_PASSWORD_LENGTH = 1;
-const MAX_PASSWORD_LENGTH = 50;
+const MAX_PASSWORD_LENGTH = 64;
 const DEFAULT_PASSWORD_LENGTH = 15;
 const DEBOUNCE_DELAY = 50; // 防抖延迟时间，单位为毫秒
 
