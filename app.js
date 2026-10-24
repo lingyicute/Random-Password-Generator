@@ -178,6 +178,15 @@ function setupCopyButton() {
     // 存储引用
     copyButton.textSpan = textSpan;
     copyButton.successDiv = successDiv;
+
+    // Visible, screen-reader-announced feedback for clipboard failures.
+    const feedback = document.createElement('span');
+    feedback.className = 'copy-feedback';
+    feedback.setAttribute('role', 'status');
+    feedback.setAttribute('aria-live', 'polite');
+    feedback.style.cssText = 'display:block; min-height:1.25em; margin-top:4px; color:#b42318; font-size:0.875rem;';
+    copyButton.parentElement.appendChild(feedback);
+    copyButton.feedback = feedback;
 }
 
 /**
@@ -619,10 +628,14 @@ async function copyPassword() {
         }
 
         copyButton.classList.add('copied');
+        if (copyButton.feedback) copyButton.feedback.textContent = '';
         if (copyButton.resetTimer) clearTimeout(copyButton.resetTimer);
         copyButton.resetTimer = setTimeout(() => copyButton.classList.remove('copied'), 1000);
     } catch (err) {
         console.error('复制失败:', err);
         copyButton.classList.remove('copied');
+        if (copyButton.feedback) {
+            copyButton.feedback.textContent = '复制失败，请手动选择并复制密码。';
+        }
     }
 }
