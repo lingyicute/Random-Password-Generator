@@ -325,8 +325,15 @@ body {
     vertical-align: middle;
   }
 
+  .password-generator .generator-container .image-container {
+    width: 416px;
+    max-width: 100%;
+  }
+
   .password-generator .generator-container .image-container img {
+    display: block;
     width: 100%;
+    height: auto;
   }
 
   .mb-40 {
