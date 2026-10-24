@@ -84,7 +84,6 @@ let config = {
  */
 document.addEventListener('DOMContentLoaded', function() {
     try {
-        addCopyButtonStyle();
         initElements();
         initEventListeners();
         generatePassword();
@@ -167,7 +166,6 @@ function setupCopyButton() {
         feedback.className = 'copy-feedback';
         feedback.setAttribute('role', 'status');
         feedback.setAttribute('aria-live', 'polite');
-        feedback.style.cssText = 'min-height:1.375rem; margin:0.5rem 0 1.5rem; color:#b42318; font-size:0.875rem;';
         const inputContainer = copyButton.closest('.input-container');
         if (inputContainer && inputContainer.parentElement) {
             inputContainer.insertAdjacentElement('afterend', feedback);
@@ -634,45 +632,6 @@ function addRotateAnimation() {
         refreshButton.classList.remove('rotate');
         refreshAnimationTimer = null;
     }, 550);
-}
-
-/**
- * 添加复制按钮样式（兼容未更新样式表的场景）
- */
-function addCopyButtonStyle() {
-    if (document.getElementById('copy-button-style')) return;
-
-    const style = document.createElement('style');
-    style.id = 'copy-button-style';
-    style.textContent = `
-        .copy-btn {
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            overflow: hidden;
-        }
-        .copy-btn-text {
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .copy-success-icon {
-            position: absolute;
-            inset: 0;
-            background-color: #52C41A;
-            color: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transform: translateY(100%);
-            transition: transform 0.2s ease;
-        }
-        .copy-btn.copied .copy-success-icon {
-            transform: translateY(0);
-        }
-    `;
-    document.head.appendChild(style);
 }
 
 /**
