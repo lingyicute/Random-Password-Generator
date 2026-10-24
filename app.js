@@ -671,6 +671,33 @@ function addRotateAnimation() {
 }
 
 /**
+ * 把文本写入剪贴板
+ *
+ * 优先使用异步 Clipboard API；它在非安全上下文（例如通过 http:// 打开本地文件）
+ * 下不存在，也可能因为权限策略、iframe 沙箱或用户拒绝而失败——这两种情况都要
+ * 回退到上一代的 execCommand('copy')，否则“剪贴板可用”就名存实亡。
+ */
+async function writeClipboard(text) {
+    const clipboard = navigator.clipboard;
+
+    if (window.isSecureContext && clipboard && typeof clipboard.writeText === 'function') {
+        try {
+            await clipboard.writeText(text);
+            return;
+        } catch (err) {
+            console.warn('Clipboard API 写入失败，回退到 execCommand:', err);
+        }
+    }
+
+    passwordInput.focus();
+    passwordInput.select();
+    passwordInput.setSelectionRange(0, text.length);
+    if (!document.execCommand('copy')) {
+        throw new Error('浏览器拒绝复制');
+    }
+}
+
+/**
  * 复制密码到剪贴板
  */
 async function copyPassword() {
@@ -687,14 +714,7 @@ async function copyPassword() {
     }
 
     try {
-        if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(value);
-        } else {
-            passwordInput.focus();
-            passwordInput.select();
-            passwordInput.setSelectionRange(0, value.length);
-            if (!document.execCommand('copy')) throw new Error('浏览器拒绝复制');
-        }
+        await writeClipboard(value);
 
         // Clipboard writes are asynchronous. Do not show success for a password
         // that the user has since edited or replaced.

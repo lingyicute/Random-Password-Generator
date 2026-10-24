@@ -76,6 +76,8 @@ test('reports clipboard failures accessibly, keeps button geometry stable, and a
       configurable: true,
       value: { writeText: () => Promise.reject(new Error('clipboard unavailable')) },
     });
+    // The failure path now falls back to execCommand; make it refuse as well.
+    document.execCommand = () => false;
   });
   await copyBtn.click();
   await expect(page.locator('.copy-feedback')).toHaveText('复制失败，请手动选择并复制密码。');
@@ -110,6 +112,28 @@ test('shows success only after the clipboard write succeeds and resets state on 
   await refresh.focus();
   await page.keyboard.press('Enter');
   await expect(copyBtn).not.toHaveClass(/copied/);
+});
+
+test('falls back to execCommand when the Clipboard API rejects', async ({ page }) => {
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error('permissions policy')) },
+    });
+    document.execCommand = command => {
+      window.__execCommandCalls = (window.__execCommandCalls || []).concat(command);
+      window.__selection = document.querySelector('.password').value.substring(
+        document.querySelector('.password').selectionStart,
+        document.querySelector('.password').selectionEnd
+      );
+      return true;
+    };
+  });
+
+  await page.locator('#pwd-copy-btn').click();
+  await expect(page.locator('.copy-feedback')).toHaveText('已复制');
+  expect(await page.evaluate(() => window.__execCommandCalls)).toEqual(['copy']);
+  expect(await page.evaluate(() => window.__selection)).toBe(await page.locator('.password').inputValue());
 });
 
 test('does not show stale clipboard success after the password changes during the write', async ({ page }) => {
