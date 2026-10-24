@@ -102,6 +102,8 @@ test('reports clipboard failures accessibly, keeps button geometry stable, and a
   await copyBtn.click();
   await expect(page.locator('.copy-feedback')).toHaveText('复制失败，请手动选择并复制密码。');
   await expect(page.locator('.copy-feedback')).toHaveAttribute('aria-live', 'polite');
+  // Failure keeps the error color; success must not inherit it.
+  await expect(page.locator('.copy-feedback')).toHaveCSS('color', 'rgb(180, 35, 24)');
 
   const afterRect = await copyBtn.boundingBox();
   expect(Math.abs(afterRect.width - beforeRect.width)).toBeLessThanOrEqual(1);
@@ -125,6 +127,7 @@ test('shows success only after the clipboard write succeeds and resets state on 
   await expect(copyBtn).toHaveClass(/copied/);
   expect(copiedText).toBe(await page.locator('.password').inputValue());
   await expect(page.locator('.copy-feedback')).toHaveText('已复制');
+  await expect(page.locator('.copy-feedback')).toHaveCSS('color', 'rgb(35, 120, 4)');
   await expect(page.locator('.copy-feedback')).toBeEmpty();
 
   // Keyboard regeneration clears stale copied indicator immediately.

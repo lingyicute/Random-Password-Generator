@@ -188,8 +188,23 @@ function resetCopyState() {
     }
     copyButton.classList.remove('copied');
     copyButton.removeAttribute('aria-label');
-    if (copyButton.feedback) {
-        copyButton.feedback.textContent = '';
+    setCopyFeedback('');
+}
+
+/**
+ * 写入复制反馈文案，并标记成功 / 失败状态
+ *
+ * 反馈容器只有一套样式，成功与失败必须靠 data-state 区分，
+ * 否则「已复制」会沿用失败提示的红色。
+ */
+function setCopyFeedback(message, state) {
+    if (!copyButton || !copyButton.feedback) return;
+
+    copyButton.feedback.textContent = message;
+    if (state) {
+        copyButton.feedback.dataset.state = state;
+    } else {
+        delete copyButton.feedback.dataset.state;
     }
 }
 
@@ -483,9 +498,7 @@ function generatePassword() {
             strengthLabel.textContent = '不可用';
         }
         setCopyAvailability(false);
-        if (copyButton && copyButton.feedback) {
-            copyButton.feedback.textContent = '当前环境不支持安全随机数生成。';
-        }
+        setCopyFeedback('当前环境不支持安全随机数生成。', 'error');
         return;
     }
 
@@ -521,9 +534,7 @@ function generatePassword() {
             strengthLabel.textContent = '不可用';
         }
         setCopyAvailability(false);
-        if (copyButton && copyButton.feedback) {
-            copyButton.feedback.textContent = '安全随机数生成失败，请更换浏览器或环境后重试。';
-        }
+        setCopyFeedback('安全随机数生成失败，请更换浏览器或环境后重试。', 'error');
         return;
     } finally {
         randomPool.fill(0);
@@ -715,9 +726,7 @@ async function copyPassword() {
     if (copyButton.disabled || copyButton.getAttribute('aria-disabled') === 'true') return;
     if (!value) {
         copyButton.classList.remove('copied');
-        if (copyButton.feedback) {
-            copyButton.feedback.textContent = '没有可复制的密码，请先生成密码。';
-        }
+        setCopyFeedback('没有可复制的密码，请先生成密码。', 'error');
         return;
     }
 
@@ -731,12 +740,12 @@ async function copyPassword() {
         copyButton.setAttribute('aria-label', '已复制');
         // 与失败提示共用同一个 live region：给聚焦按钮临时改 aria-label
         // 并不能被读屏可靠播报。
-        if (copyButton.feedback) copyButton.feedback.textContent = '已复制';
+        setCopyFeedback('已复制', 'success');
         if (copyButton.resetTimer) clearTimeout(copyButton.resetTimer);
         copyButton.resetTimer = setTimeout(() => {
             copyButton.classList.remove('copied');
             copyButton.removeAttribute('aria-label');
-            if (copyButton.feedback) copyButton.feedback.textContent = '';
+            setCopyFeedback('');
             copyButton.resetTimer = null;
         }, 1000);
     } catch (err) {
@@ -744,9 +753,7 @@ async function copyPassword() {
         console.error('复制失败:', err);
         copyButton.classList.remove('copied');
         copyButton.removeAttribute('aria-label');
-        if (copyButton.feedback) {
-            copyButton.feedback.textContent = '复制失败，请手动选择并复制密码。';
-        }
+        setCopyFeedback('复制失败，请手动选择并复制密码。', 'error');
     }
 }
 

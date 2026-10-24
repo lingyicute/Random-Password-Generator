@@ -493,6 +493,10 @@ button:not(:disabled) {
   text-align: center;
 }
 
+.copy-feedback[data-state="success"] {
+  color: #237804;
+}
+
 @media (min-width: 992px) {
   .copy-feedback {
     margin: 0.5rem 0 2.25rem;
