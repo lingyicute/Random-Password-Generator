@@ -10,15 +10,15 @@
 
 ## Running tests
 
-The browser tests use Playwright and Chromium. Install dependencies and the browser, then run the suite:
+The Playwright suite runs in Chromium, Firefox, and WebKit. Install dependencies and all three browser engines, then run the suite:
 
 ```sh
 npm ci
-npx playwright install --with-deps chromium
+npx playwright install --with-deps chromium firefox webkit
 npm test
 ```
 
-The Playwright config serves this static site locally with Python 3. Tests cover password length and selected character sets, the minimum-one-character-class rule, clipboard success/failure feedback, length boundaries, and layout fit from 320px through desktop viewports.
+The Playwright config serves this static site locally with Python 3. Tests cover password length and selected character sets, the minimum-one-character-class rule, clipboard success/failure feedback, length boundaries, responsive layout and horizontal overflow from narrow mobile through desktop viewports, and key accessibility behavior across the three engines.
 
 ## 🗂️ License
 
