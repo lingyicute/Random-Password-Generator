@@ -205,6 +205,25 @@ test('updates strength live on manual edits and penalizes repeated characters', 
   await expect(page.locator('.copy-feedback')).toHaveText('没有可复制的密码，请先生成密码。');
 });
 
+test('scores strength from estimated entropy rather than raw length', async ({ page }) => {
+  const scores = await page.evaluate(() => ({
+    repeatedSequence: calculatePasswordScore('1234567890'.repeat(6) + '1234'),
+    longDigits: calculatePasswordScore('49276381509473826105948372615093847562'),
+    longLowercase: calculatePasswordScore('xqmvzbnlwrptksjdfgh'),
+    shortMixed: calculatePasswordScore('aB3x'),
+    singleCharacter: calculatePasswordScore('111111111111111'),
+  }));
+
+  // A repeated "1234567890" block is long but trivially guessable.
+  expect(scores.repeatedSequence).toBeLessThan(40);
+  // Length in a large keyspace is no longer capped by a hand-picked limit.
+  expect(scores.longDigits).toBeGreaterThanOrEqual(80);
+  expect(scores.longLowercase).toBeGreaterThanOrEqual(80);
+  // Short passwords still cannot score well by mixing character classes.
+  expect(scores.shortMixed).toBeLessThan(40);
+  expect(scores.singleCharacter).toBeLessThan(20);
+});
+
 test('keeps length controls within their supported bounds and syncs button states', async ({ page }) => {
   const slider = page.locator('input[type="range"]');
   const minusBtn = page.locator('.slider-settings .button-circle:first-child');

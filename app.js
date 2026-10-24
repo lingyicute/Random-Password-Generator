@@ -544,66 +544,104 @@ function updatePasswordStrength(password) {
 }
 
 /**
+ * 字符池大小：按「密码里实际出现的类别」折算估计熵
+ */
+const CHAR_POOL_SIZES = {
+    upper: 26,
+    lower: 26,
+    digit: 10,
+    special: 26
+};
+
+/**
+ * 估算密码实际用到的字符池大小
+ */
+function estimatePoolSize(password) {
+    let poolSize = 0;
+    if (/[A-Z]/.test(password)) poolSize += CHAR_POOL_SIZES.upper;
+    if (/[a-z]/.test(password)) poolSize += CHAR_POOL_SIZES.lower;
+    if (/[0-9]/.test(password)) poolSize += CHAR_POOL_SIZES.digit;
+    if (/[^A-Za-z0-9]/.test(password)) poolSize += CHAR_POOL_SIZES.special;
+    return Math.max(2, poolSize);
+}
+
+/**
+ * 求最小重复周期："abcabcabc" → 3；无周期时返回字符串长度
+ */
+function findRepeatingPeriod(text) {
+    for (let period = 1; period <= text.length / 2; period++) {
+        let repeats = true;
+        for (let index = period; index < text.length; index++) {
+            if (text[index] !== text[index - period]) {
+                repeats = false;
+                break;
+            }
+        }
+        if (repeats) return period;
+    }
+    return text.length;
+}
+
+/**
+ * 统计连续递增 / 递减片段（"abc"、"9876"）里可预测的字符数
+ */
+function countPredictableCharacters(text) {
+    let predictable = 0;
+    let index = 1;
+
+    while (index < text.length) {
+        const step = text.charCodeAt(index) - text.charCodeAt(index - 1);
+        if (step !== 1 && step !== -1) {
+            index++;
+            continue;
+        }
+
+        let end = index + 1;
+        while (end < text.length && text.charCodeAt(end) - text.charCodeAt(end - 1) === step) {
+            end++;
+        }
+
+        const runLength = end - index + 1;
+        if (runLength >= 3) predictable += runLength - 1;
+        index = end;
+    }
+
+    return predictable;
+}
+
+/**
  * 计算密码强度得分 (0-100)
+ *
+ * 得分直接对应估计熵（bit），而不是「长度分段 + 每类固定加分」：
+ *
+ *   有效字符数 = 重复单元长度 − 0.6 × 连续片段里可预测的字符数
+ *   熵 = 有效字符数 × log2(实际字符池) + log2(重复次数)
+ *
+ * 这样 64 位纯数字不再被无理由压到 65 分，而 "1234567890" 重复 6 次、
+ * "abc"/"9876" 这类序列仍然会被判得很弱。
  */
 function calculatePasswordScore(password) {
     if (!password) return 0;
 
     const length = password.length;
-    const uniqueCount = new Set(password).size;
-
-    if (length > 1 && uniqueCount === 1) {
+    if (length > 1 && new Set(password).size === 1) {
         return Math.min(10, length * 2);
     }
 
-    let lengthScore = 0;
-    if (length <= 4) {
-        lengthScore = length * 3;
-    } else if (length <= 8) {
-        lengthScore = 12 + (length - 4) * 4;
-    } else if (length <= 12) {
-        lengthScore = 28 + (length - 8) * 5;
-    } else {
-        lengthScore = Math.min(60, 48 + (length - 12) * 3);
+    const bitsPerCharacter = Math.log2(estimatePoolSize(password));
+
+    // 周期重复时只有重复单元携带熵，重复次数只额外贡献一点信息。
+    const period = findRepeatingPeriod(password);
+    const unit = period < length ? password.slice(0, period) : password;
+    const predictable = countPredictableCharacters(unit);
+    const effectiveLength = Math.max(1, unit.length - predictable * 0.6);
+
+    let bits = effectiveLength * bitsPerCharacter;
+    if (period < length) {
+        bits += Math.log2(length / period);
     }
 
-    const hasUpper = /[A-Z]/.test(password);
-    const hasLower = /[a-z]/.test(password);
-    const hasDigit = /[0-9]/.test(password);
-    const hasSpecial = /[^A-Za-z0-9]/.test(password);
-    const charTypeCount = [hasUpper, hasLower, hasDigit, hasSpecial].filter(Boolean).length;
-
-    let score = lengthScore + charTypeCount * 7.5;
-
-    if (length >= 10 && charTypeCount >= 3) {
-        score += 5;
-    }
-    if (length >= 14 && charTypeCount >= 4) {
-        score += 5;
-    }
-
-    // Penalize heavy repetition relative to expected distinct count for the active pool size.
-    const poolSize = (hasUpper ? 26 : 0) + (hasLower ? 26 : 0) + (hasDigit ? 10 : 0) + (hasSpecial ? 26 : 0) || 26;
-    const expectedUnique = poolSize * (1 - Math.pow((poolSize - 1) / poolSize, length));
-    if (length >= 6 && expectedUnique > 0) {
-        const diversityRatio = uniqueCount / expectedUnique;
-        if (uniqueCount <= 2) {
-            score = Math.min(score, 25);
-        } else if (diversityRatio < 0.55) {
-            score *= diversityRatio / 0.55;
-        }
-    }
-
-    // Cap single-class passwords to reflect their smaller keyspace.
-    if (charTypeCount === 1) {
-        if (hasDigit) {
-            score = Math.min(score, length >= 20 ? 65 : 55);
-        } else {
-            score = Math.min(score, length >= 20 ? 80 : 75);
-        }
-    }
-
-    return Math.max(0, Math.min(100, score));
+    return Math.max(0, Math.min(100, Math.round(bits)));
 }
 
 /**
