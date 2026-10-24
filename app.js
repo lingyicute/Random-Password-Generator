@@ -41,19 +41,9 @@ let refreshAnimationTimer = null;
 const randomPool = new Uint8Array(128);
 let randomPoolOffset = randomPool.length;
 
-// 界面文本
+// 只在运行时出现的文案；静态文案以 index.html 为唯一来源
 const texts = {
-    appTitle: "随机密码生成器",
-    appText: "精锻数字符印，永固赛博边关",
-    labelLength: "密码长度",
-    labelCharacters: "使用的字符",
-    labelCopy: "复制",
     labelCopied: "✓",
-    labelStrength1: strengthLabels.veryWeak,
-    labelStrength2: strengthLabels.weak,
-    labelStrength3: strengthLabels.mediocre,
-    labelStrength4: strengthLabels.strong,
-    labelStrength5: strengthLabels.veryStrong,
     charsetHint: "至少需要保留一种字符"
 };
 
@@ -111,17 +101,6 @@ function initElements() {
     checkboxes.numbers = document.getElementById('numbers');
     checkboxes.specials = document.getElementById('specials');
 
-    const titleEl = document.querySelector('h1 span');
-    const subtitleEl = document.querySelector('.body-2.mb-32');
-    const lengthLabelEl = document.querySelector('.length-settings .first span');
-    const charsLabelEl = document.querySelector('.complexity-settings .first span');
-
-    if (titleEl) titleEl.textContent = texts.appTitle;
-    if (subtitleEl) subtitleEl.textContent = texts.appText;
-    if (lengthLabelEl) lengthLabelEl.textContent = texts.labelLength;
-    if (charsLabelEl) charsLabelEl.textContent = texts.labelCharacters;
-    if (copyButton) copyButton.textContent = texts.labelCopy;
-
     if (checkboxes.uppercase) checkboxes.uppercase.checked = config.complexity[0];
     if (checkboxes.lowercase) checkboxes.lowercase.checked = config.complexity[1];
     if (checkboxes.numbers) checkboxes.numbers.checked = config.complexity[2];
@@ -141,7 +120,7 @@ function initElements() {
  * 设置复制按钮的DOM结构
  */
 function setupCopyButton() {
-    const originalText = copyButton.textContent.trim() || texts.labelCopy;
+    const originalText = copyButton.textContent.trim();
     copyButton.innerHTML = '';
 
     const textSpan = document.createElement('span');
@@ -640,19 +619,19 @@ function updateStrengthLabel(strength) {
 
     if (strength === 0) {
         strengthLabel.classList.add('bg-orange-bright');
-        strengthLabel.textContent = texts.labelStrength1;
+        strengthLabel.textContent = strengthLabels.veryWeak;
     } else if (strength === 1) {
         strengthLabel.classList.add('bg-orange-light');
-        strengthLabel.textContent = texts.labelStrength2;
+        strengthLabel.textContent = strengthLabels.weak;
     } else if (strength === 2) {
         strengthLabel.classList.add('bg-orange-pale');
-        strengthLabel.textContent = texts.labelStrength3;
+        strengthLabel.textContent = strengthLabels.mediocre;
     } else if (strength === 3) {
         strengthLabel.classList.add('bg-green-pale');
-        strengthLabel.textContent = texts.labelStrength4;
+        strengthLabel.textContent = strengthLabels.strong;
     } else {
         strengthLabel.classList.add('bg-green-bright');
-        strengthLabel.textContent = texts.labelStrength5;
+        strengthLabel.textContent = strengthLabels.veryStrong;
     }
 
     if (slider) {
