@@ -3,10 +3,17 @@ const MAX_PASSWORD_LENGTH = 50;
 const DEFAULT_PASSWORD_LENGTH = 15;
 const DEBOUNCE_DELAY = 50; // 防抖延迟时间，单位为毫秒
 
+const CHARSETS = [
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    'abcdefghijklmnopqrstuvwxyz',
+    '0123456789',
+    '!@#$%^&*()_+-=[]{}|;:,.<>?'
+];
+
 // 密码强度等级对应的文本
 const strengthLabels = {
     veryWeak: "极弱",
-    weak: "较弱", 
+    weak: "较弱",
     mediocre: "一般",
     strong: "较强",
     veryStrong: "很强"
@@ -22,17 +29,17 @@ const strengthColors = {
 };
 
 // 当前密码强度 (0-4)
-let currentStrength = 2;
+let currentStrength = 4;
 
-// 防抖计时器
+// 防抖与动画计时器
 let sliderDebounceTimer = null;
+let sliderPendingGenerate = false;
 let lastSliderValue = DEFAULT_PASSWORD_LENGTH;
+let refreshAnimationTimer = null;
 
-// 复制按钮计时器
-let copyButtonTimers = {
-    textReset: null,
-    widthReset: null
-};
+// 安全随机字节缓冲池（每次生成完毕后清零）
+const randomPool = new Uint8Array(128);
+let randomPoolOffset = randomPool.length;
 
 // 界面文本
 const texts = {
@@ -69,27 +76,19 @@ let checkboxes = {
 // 密码配置
 let config = {
     length: DEFAULT_PASSWORD_LENGTH,
-    complexity: [true, true, true, false], // [大写, 小写, 数字, 特殊字符]
-    disableChecked: false
+    complexity: [true, true, true, false] // [大写, 小写, 数字, 特殊字符]
 };
 
 /**
  * 页面加载后初始化
  */
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("DOM已加载，开始初始化...");
     try {
-        // 添加对勾按钮的样式
         addCopyButtonStyle();
-        
         initElements();
-        console.log("元素初始化完成");
         initEventListeners();
-        console.log("事件监听器初始化完成");
         generatePassword();
-        console.log("密码已生成");
         updateUI();
-        console.log("UI已更新");
     } catch (e) {
         console.error("初始化过程中发生错误:", e);
     }
@@ -101,53 +100,40 @@ document.addEventListener('DOMContentLoaded', function() {
 function initElements() {
     passwordInput = document.querySelector('.password');
     strengthLabel = document.querySelector('.form-floating .label');
-    
-    // 修改滑块相关元素的获取方式
     slider = document.querySelector('input[type="range"]');
     sliderBorderPart = document.getElementById('slider-border-part');
-    
     lengthDisplay = document.querySelector('.length-settings .fw-bold');
     minusButton = document.querySelector('.slider-settings .button-circle:first-child');
     plusButton = document.querySelector('.slider-settings .button-circle:last-child');
     refreshButton = document.querySelector('.icon-refresh');
     copyButton = document.getElementById('pwd-copy-btn');
-    
-    // 设置复选框
+
     checkboxes.uppercase = document.getElementById('uppercase');
     checkboxes.lowercase = document.getElementById('lowercase');
     checkboxes.numbers = document.getElementById('numbers');
     checkboxes.specials = document.getElementById('specials');
-    
-    console.log("复选框状态:", 
-        checkboxes.uppercase ? "大写存在" : "大写不存在", 
-        checkboxes.lowercase ? "小写存在" : "小写不存在",
-        checkboxes.numbers ? "数字存在" : "数字不存在",
-        checkboxes.specials ? "特殊字符存在" : "特殊字符不存在"
-    );
-    
-    // 设置初始文本
-    document.querySelector('h1 span').textContent = texts.appTitle;
-    document.querySelector('.body-2.mb-32').textContent = texts.appText;
-    document.querySelector('.length-settings .first span').textContent = texts.labelLength;
-    document.querySelector('.complexity-settings .first span').textContent = texts.labelCharacters;
-    copyButton.textContent = texts.labelCopy;
-    
-    // 设置初始复选框状态
-    if(checkboxes.uppercase) checkboxes.uppercase.checked = config.complexity[0];
-    if(checkboxes.lowercase) checkboxes.lowercase.checked = config.complexity[1];
-    if(checkboxes.numbers) checkboxes.numbers.checked = config.complexity[2];
-    if(checkboxes.specials) checkboxes.specials.checked = config.complexity[3];
-    
-    // 设置滑块初始值并应用样式
-    if(slider) {
-        console.log("滑块元素已找到");
-        slider.value = config.length;
+
+    const titleEl = document.querySelector('h1 span');
+    const subtitleEl = document.querySelector('.body-2.mb-32');
+    const lengthLabelEl = document.querySelector('.length-settings .first span');
+    const charsLabelEl = document.querySelector('.complexity-settings .first span');
+
+    if (titleEl) titleEl.textContent = texts.appTitle;
+    if (subtitleEl) subtitleEl.textContent = texts.appText;
+    if (lengthLabelEl) lengthLabelEl.textContent = texts.labelLength;
+    if (charsLabelEl) charsLabelEl.textContent = texts.labelCharacters;
+    if (copyButton) copyButton.textContent = texts.labelCopy;
+
+    if (checkboxes.uppercase) checkboxes.uppercase.checked = config.complexity[0];
+    if (checkboxes.lowercase) checkboxes.lowercase.checked = config.complexity[1];
+    if (checkboxes.numbers) checkboxes.numbers.checked = config.complexity[2];
+    if (checkboxes.specials) checkboxes.specials.checked = config.complexity[3];
+
+    if (slider) {
+        slider.value = String(config.length);
         applyFill(slider, sliderBorderPart);
-    } else {
-        console.error("未找到滑块元素");
     }
-    
-    // 设置复制按钮结构
+
     if (copyButton) {
         setupCopyButton();
     }
@@ -157,103 +143,138 @@ function initElements() {
  * 设置复制按钮的DOM结构
  */
 function setupCopyButton() {
-    // 保存原始内容
-    const originalText = copyButton.textContent.trim();
-    
-    // 清空按钮内容
+    const originalText = copyButton.textContent.trim() || texts.labelCopy;
     copyButton.innerHTML = '';
-    
-    // 创建文本容器
+
     const textSpan = document.createElement('span');
     textSpan.className = 'copy-btn-text';
     textSpan.textContent = originalText;
     copyButton.appendChild(textSpan);
-    
-    // 创建成功图标容器
-    const successDiv = document.createElement('div');
-    successDiv.className = 'copy-success-icon';
-    successDiv.textContent = texts.labelCopied;
-    copyButton.appendChild(successDiv);
-    
-    // 存储引用
+
+    const successSpan = document.createElement('span');
+    successSpan.className = 'copy-success-icon';
+    successSpan.setAttribute('aria-hidden', 'true');
+    successSpan.textContent = texts.labelCopied;
+    copyButton.appendChild(successSpan);
+
     copyButton.textSpan = textSpan;
-    copyButton.successDiv = successDiv;
+    copyButton.successDiv = successSpan;
 
     // Visible, screen-reader-announced feedback for clipboard failures.
-    const feedback = document.createElement('span');
-    feedback.className = 'copy-feedback';
-    feedback.setAttribute('role', 'status');
-    feedback.setAttribute('aria-live', 'polite');
-    feedback.style.cssText = 'display:block; min-height:1.25em; margin-top:4px; color:#b42318; font-size:0.875rem;';
-    copyButton.parentElement.appendChild(feedback);
+    let feedback = document.querySelector('.copy-feedback');
+    if (!feedback) {
+        feedback = document.createElement('p');
+        feedback.className = 'copy-feedback';
+        feedback.setAttribute('role', 'status');
+        feedback.setAttribute('aria-live', 'polite');
+        feedback.style.cssText = 'min-height:1.375rem; margin:0.5rem 0 1.5rem; color:#b42318; font-size:0.875rem;';
+        const inputContainer = copyButton.closest('.input-container');
+        if (inputContainer && inputContainer.parentElement) {
+            inputContainer.insertAdjacentElement('afterend', feedback);
+        } else if (copyButton.parentElement) {
+            copyButton.parentElement.appendChild(feedback);
+        }
+    }
     copyButton.feedback = feedback;
+}
+
+/**
+ * 重置复制按钮和错误提示状态
+ */
+function resetCopyState() {
+    if (!copyButton) return;
+    if (copyButton.resetTimer) {
+        clearTimeout(copyButton.resetTimer);
+        copyButton.resetTimer = null;
+    }
+    copyButton.classList.remove('copied');
+    copyButton.removeAttribute('aria-label');
+    if (copyButton.feedback) {
+        copyButton.feedback.textContent = '';
+    }
+}
+
+/**
+ * 规范化密码长度范围
+ */
+function clampLength(value) {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed)) return config.length;
+    return Math.min(MAX_PASSWORD_LENGTH, Math.max(MIN_PASSWORD_LENGTH, parsed));
 }
 
 /**
  * 初始化事件监听器
  */
 function initEventListeners() {
-    // 刷新按钮
-    if(refreshButton) {
+    if (refreshButton) {
         refreshButton.addEventListener('click', generatePassword);
+        refreshButton.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                generatePassword();
+            }
+        });
     }
-    
-    // 复制按钮
-    if(copyButton) {
+
+    if (copyButton) {
         copyButton.addEventListener('click', copyPassword);
     }
-    
-    // 长度减少按钮
-    if(minusButton) {
+
+    if (passwordInput) {
+        passwordInput.addEventListener('input', function() {
+            resetCopyState();
+            updatePasswordStrength(this.value);
+        });
+    }
+
+    if (minusButton) {
         minusButton.addEventListener('click', decreaseLength);
     }
-    
-    // 长度增加按钮
-    if(plusButton) {
+
+    if (plusButton) {
         plusButton.addEventListener('click', increaseLength);
     }
-    
-    // 密码长度滑块
-    if(slider) {
-        // 输入时实时更新UI和生成密码（带防抖）
+
+    if (slider) {
         slider.addEventListener('input', function() {
-            const newValue = parseInt(this.value);
-            
-            // 更新密码长度显示
+            const newValue = clampLength(this.value);
             config.length = newValue;
-            if(lengthDisplay) {
-                lengthDisplay.textContent = config.length;
+            if (lengthDisplay) {
+                lengthDisplay.textContent = String(config.length);
             }
-            
-            // 更新滑块填充样式
+            updateLengthButtons();
             applyFill(slider, sliderBorderPart);
-            
-            // 如果值与上次不同，重置防抖计时器
-            if(newValue !== lastSliderValue) {
+
+            if (newValue !== lastSliderValue) {
                 lastSliderValue = newValue;
-                
-                // 清除之前的计时器
+                sliderPendingGenerate = true;
                 clearTimeout(sliderDebounceTimer);
-                
-                // 设置新的计时器，延迟生成密码
                 sliderDebounceTimer = setTimeout(() => {
+                    sliderPendingGenerate = false;
                     generatePassword();
                 }, DEBOUNCE_DELAY);
             }
         });
-        
-        // 滑块释放时，确保生成密码（以防万一防抖被取消）
+
         slider.addEventListener('change', function() {
-            // 清除可能存在的防抖计时器
-            clearTimeout(sliderDebounceTimer);
-            // 立即生成密码
-            generatePassword();
+            const newValue = clampLength(this.value);
+            const valueOutOfSync = newValue !== config.length;
+            if (valueOutOfSync) {
+                config.length = newValue;
+                lastSliderValue = newValue;
+                updateUI();
+            }
+            if (sliderPendingGenerate || valueOutOfSync) {
+                clearTimeout(sliderDebounceTimer);
+                sliderPendingGenerate = false;
+                generatePassword();
+            }
         });
     }
-    
-    // 复选框
+
     const setupCheckbox = (checkbox, index) => {
-        if(checkbox) {
+        if (checkbox) {
             checkbox.addEventListener('change', function() {
                 config.complexity[index] = this.checked;
                 if (!preventUncheckAll(this, index)) return;
@@ -261,7 +282,7 @@ function initEventListeners() {
             });
         }
     };
-    
+
     setupCheckbox(checkboxes.uppercase, 0);
     setupCheckbox(checkboxes.lowercase, 1);
     setupCheckbox(checkboxes.numbers, 2);
@@ -269,50 +290,54 @@ function initEventListeners() {
 }
 
 /**
+ * 更新加减按钮的禁用状态与无障碍属性
+ */
+function updateLengthButtons() {
+    const atMin = config.length <= MIN_PASSWORD_LENGTH;
+    const atMax = config.length >= MAX_PASSWORD_LENGTH;
+
+    if (minusButton) {
+        minusButton.classList.toggle('disabled', atMin);
+    }
+    if (plusButton) {
+        plusButton.classList.toggle('disabled', atMax);
+    }
+}
+
+/**
  * 更新UI元素
  */
 function updateUI() {
-    // 更新长度显示
-    if(lengthDisplay) lengthDisplay.textContent = config.length;
-    
-    // 设置滑块值
-    if(slider) {
-        slider.value = config.length;
-        // 更新滑块样式
+    if (lengthDisplay) lengthDisplay.textContent = String(config.length);
+
+    if (slider) {
+        slider.value = String(config.length);
         applyFill(slider, sliderBorderPart);
     }
-    
-    // 禁用/启用加减按钮
-    if(minusButton) minusButton.classList.toggle('disabled', config.length <= MIN_PASSWORD_LENGTH);
-    if(plusButton) plusButton.classList.toggle('disabled', config.length >= MAX_PASSWORD_LENGTH);
-    
-    // 设置复选框禁用状态
+
+    updateLengthButtons();
     updateCheckboxesDisabled();
 }
 
 /**
  * 应用滑块填充样式
  */
-function applyFill(slider, borderPart) {
-    if(!slider) return;
-    
-    const min = parseInt(slider.min) || 1;
-    const max = parseInt(slider.max) || 50;
-    const val = parseInt(slider.value);
-    const percent = 100 * (val - min) / (max - min);
-    
-    // 获取当前强度对应的颜色
+function applyFill(sliderEl, borderPart) {
+    if (!sliderEl) return;
+
+    const min = Number(sliderEl.min || MIN_PASSWORD_LENGTH);
+    const max = Number(sliderEl.max || MAX_PASSWORD_LENGTH);
+    const val = clampLength(sliderEl.value);
+    const ratio = max > min ? (val - min) / (max - min) : 0;
+    const percent = ratio * 100;
     const color = strengthColors[currentStrength] || '#0070f6';
-    
-    // 设置滑块背景渐变，颜色随强度变化
-    slider.style.backgroundImage = `linear-gradient(90deg, ${color} ${percent}%, transparent ${percent}%)`;
-    
-    // 更新边界部分的宽度和颜色
-    if(borderPart) {
-        requestAnimationFrame(() => {
-            borderPart.style.width = `${percent}%`;
-            borderPart.style.backgroundColor = color;
-        });
+    const stop = `calc(9px + (100% - 18px) * ${ratio})`;
+
+    sliderEl.style.backgroundImage = `linear-gradient(90deg, ${color} 0%, ${color} ${stop}, #eef2f6 ${stop}, #eef2f6 100%)`;
+
+    if (borderPart) {
+        borderPart.style.width = `${percent}%`;
+        borderPart.style.backgroundColor = color;
     }
 }
 
@@ -321,13 +346,10 @@ function applyFill(slider, borderPart) {
  */
 function increaseLength() {
     if (config.length < MAX_PASSWORD_LENGTH) {
+        clearTimeout(sliderDebounceTimer);
+        sliderPendingGenerate = false;
         config.length++;
-        // 同步更新滑块值
-        if(slider) {
-            slider.value = config.length;
-            // 立即应用填充效果
-            applyFill(slider, sliderBorderPart);
-        }
+        lastSliderValue = config.length;
         updateUI();
         generatePassword();
     }
@@ -338,13 +360,10 @@ function increaseLength() {
  */
 function decreaseLength() {
     if (config.length > MIN_PASSWORD_LENGTH) {
+        clearTimeout(sliderDebounceTimer);
+        sliderPendingGenerate = false;
         config.length--;
-        // 同步更新滑块值
-        if(slider) {
-            slider.value = config.length;
-            // 立即应用填充效果
-            applyFill(slider, sliderBorderPart);
-        }
+        lastSliderValue = config.length;
         updateUI();
         generatePassword();
     }
@@ -363,10 +382,10 @@ function preventUncheckAll(changedCheckbox, changedIndex) {
             changedCheckbox.checked = true;
             config.complexity[changedIndex] = true;
         }
+        updateCheckboxesDisabled();
         return false;
     }
 
-    config.disableChecked = checkedCount === 1;
     updateCheckboxesDisabled();
     return true;
 }
@@ -375,63 +394,108 @@ function preventUncheckAll(changedCheckbox, changedIndex) {
  * 更新复选框的禁用状态
  */
 function updateCheckboxesDisabled() {
-    console.log("更新复选框状态:", config.complexity, config.disableChecked);
-    
-    // 确保复选框元素存在
-    if (!checkboxes.uppercase || !checkboxes.lowercase || 
+    if (!checkboxes.uppercase || !checkboxes.lowercase ||
         !checkboxes.numbers || !checkboxes.specials) {
-        console.warn("部分复选框元素未初始化");
         return;
     }
-    
-    checkboxes.uppercase.disabled = config.disableChecked && config.complexity[0];
-    checkboxes.lowercase.disabled = config.disableChecked && config.complexity[1];
-    checkboxes.numbers.disabled = config.disableChecked && config.complexity[2];
-    checkboxes.specials.disabled = config.disableChecked && config.complexity[3];
+
+    const disableSingleChecked = config.complexity.filter(Boolean).length <= 1;
+    checkboxes.uppercase.disabled = disableSingleChecked && config.complexity[0];
+    checkboxes.lowercase.disabled = disableSingleChecked && config.complexity[1];
+    checkboxes.numbers.disabled = disableSingleChecked && config.complexity[2];
+    checkboxes.specials.disabled = disableSingleChecked && config.complexity[3];
+}
+
+/**
+ * 从安全缓冲池读取一个随机字节
+ */
+function getRandomByte() {
+    if (randomPoolOffset >= randomPool.length) {
+        window.crypto.getRandomValues(randomPool);
+        randomPoolOffset = 0;
+    }
+    return randomPool[randomPoolOffset++];
+}
+
+/**
+ * 使用拒绝采样生成 [0, max) 范围内的无偏安全随机整数
+ */
+function getSecureRandomInt(max) {
+    if (max <= 1) return 0;
+    const limit = Math.floor(256 / max) * max;
+    let byte;
+    do {
+        byte = getRandomByte();
+    } while (byte >= limit);
+    return byte % max;
 }
 
 /**
  * 根据配置生成密码
  */
 function generatePassword() {
-    // 确定使用的字符集
-    let charset = '';
-    if (config.complexity[0]) charset += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    if (config.complexity[1]) charset += 'abcdefghijklmnopqrstuvwxyz';
-    if (config.complexity[2]) charset += '0123456789';
-    if (config.complexity[3]) charset += '!@#$%^&*()_+-=[]{}|;:,.<>?';
-    
-    if (!charset) return;
+    const activeCharsets = CHARSETS.filter((_, index) => config.complexity[index]);
+    if (activeCharsets.length === 0) return;
+
+    resetCopyState();
 
     // Web Crypto is required for security-sensitive randomness. Rejection
     // sampling avoids modulo bias when the charset length does not divide 256.
     if (!window.crypto || typeof window.crypto.getRandomValues !== 'function') {
         if (passwordInput) passwordInput.value = '';
-        if (strengthLabel) strengthLabel.textContent = '需要安全随机数支持';
+        if (strengthLabel) {
+            updateStrengthLabel(0);
+            strengthLabel.textContent = '不可用';
+        }
+        if (copyButton) {
+            copyButton.classList.add('disabled');
+            copyButton.setAttribute('aria-disabled', 'true');
+            if (copyButton.feedback) {
+                copyButton.feedback.textContent = '当前环境不支持安全随机数生成。';
+            }
+        }
         return;
     }
 
-    const passwordChars = [];
-    const limit = Math.floor(256 / charset.length) * charset.length;
-    const randomBytes = new Uint8Array(64);
-    while (passwordChars.length < config.length) {
-        window.crypto.getRandomValues(randomBytes);
-        for (const byte of randomBytes) {
-            if (byte < limit) passwordChars.push(charset[byte % charset.length]);
-            if (passwordChars.length === config.length) break;
-        }
+    if (copyButton) {
+        copyButton.classList.remove('disabled');
+        copyButton.removeAttribute('aria-disabled');
     }
+
+    const combinedCharset = activeCharsets.join('');
+    const passwordChars = [];
+
+    try {
+        // Guarantee at least one character from each selected class when length permits.
+        if (config.length >= activeCharsets.length) {
+            for (const set of activeCharsets) {
+                passwordChars.push(set[getSecureRandomInt(set.length)]);
+            }
+        }
+
+        while (passwordChars.length < config.length) {
+            passwordChars.push(combinedCharset[getSecureRandomInt(combinedCharset.length)]);
+        }
+
+        // Fisher-Yates shuffle with unbiased CSPRNG so guaranteed chars land uniformly.
+        for (let i = passwordChars.length - 1; i > 0; i--) {
+            const j = getSecureRandomInt(i + 1);
+            const temp = passwordChars[i];
+            passwordChars[i] = passwordChars[j];
+            passwordChars[j] = temp;
+        }
+    } finally {
+        randomPool.fill(0);
+        randomPoolOffset = randomPool.length;
+    }
+
     const password = passwordChars.join('');
 
-    // 更新输入框
-    if(passwordInput) {
+    if (passwordInput) {
         passwordInput.value = password;
-        
-        // 计算并显示密码强度
         updatePasswordStrength(password);
     }
-    
-    // 添加动画效果
+
     addRotateAnimation();
 }
 
@@ -439,12 +503,9 @@ function generatePassword() {
  * 根据密码计算强度并更新显示
  */
 function updatePasswordStrength(password) {
-    if(!strengthLabel) return;
-    
-    // 计算密码强度得分 (0-100)
-    let score = calculatePasswordScore(password);
-    
-    // 将得分映射到强度等级 (0-4)
+    if (!strengthLabel) return;
+
+    const score = calculatePasswordScore(password);
     let strength;
     if (score < 20) {
         strength = 0; // 极弱
@@ -457,8 +518,7 @@ function updatePasswordStrength(password) {
     } else {
         strength = 4; // 很强
     }
-    
-    // 更新强度标签
+
     updateStrengthLabel(strength);
 }
 
@@ -467,62 +527,75 @@ function updatePasswordStrength(password) {
  */
 function calculatePasswordScore(password) {
     if (!password) return 0;
-    
-    let score = 0;
-    
-    // 1. 长度评分 (最多60分) - 增加长度权重
-    // 长度得分曲线更陡峭，短密码分数低，长密码分数高
-    if (password.length <= 4) {
-        score += password.length * 3; // 每字符3分
-    } else if (password.length <= 8) {
-        score += 12 + (password.length - 4) * 4; // 4字符后每字符4分
-    } else if (password.length <= 12) {
-        score += 28 + (password.length - 8) * 5; // 8字符后每字符5分
-    } else {
-        score += Math.min(60, 48 + (password.length - 12) * 3); // 12字符后每字符3分，最多60分
+
+    const length = password.length;
+    const uniqueCount = new Set(password).size;
+
+    if (length > 1 && uniqueCount === 1) {
+        return Math.min(10, length * 2);
     }
-    
-    // 2. 字符类型评分 (最多30分) - 减少字符种类权重
+
+    let lengthScore = 0;
+    if (length <= 4) {
+        lengthScore = length * 3;
+    } else if (length <= 8) {
+        lengthScore = 12 + (length - 4) * 4;
+    } else if (length <= 12) {
+        lengthScore = 28 + (length - 8) * 5;
+    } else {
+        lengthScore = Math.min(60, 48 + (length - 12) * 3);
+    }
+
     const hasUpper = /[A-Z]/.test(password);
     const hasLower = /[a-z]/.test(password);
     const hasDigit = /[0-9]/.test(password);
     const hasSpecial = /[^A-Za-z0-9]/.test(password);
-    
-    // 每种字符类型分值
-    if (hasUpper) score += 7.5;
-    if (hasLower) score += 7.5;
-    if (hasDigit) score += 7.5;
-    if (hasSpecial) score += 7.5;
-    
-    // 3. 完整性评分 (最多10分)
-    // 如果密码较长且包含多种字符类型，额外加分
     const charTypeCount = [hasUpper, hasLower, hasDigit, hasSpecial].filter(Boolean).length;
-    
-    if (password.length >= 10 && charTypeCount >= 3) {
+
+    let score = lengthScore + charTypeCount * 7.5;
+
+    if (length >= 10 && charTypeCount >= 3) {
         score += 5;
     }
-    
-    if (password.length >= 14 && charTypeCount >= 4) {
+    if (length >= 14 && charTypeCount >= 4) {
         score += 5;
     }
-    
-    return score;
+
+    // Penalize heavy repetition relative to expected distinct count for the active pool size.
+    const poolSize = (hasUpper ? 26 : 0) + (hasLower ? 26 : 0) + (hasDigit ? 10 : 0) + (hasSpecial ? 26 : 0) || 26;
+    const expectedUnique = poolSize * (1 - Math.pow((poolSize - 1) / poolSize, length));
+    if (length >= 6 && expectedUnique > 0) {
+        const diversityRatio = uniqueCount / expectedUnique;
+        if (uniqueCount <= 2) {
+            score = Math.min(score, 25);
+        } else if (diversityRatio < 0.55) {
+            score *= diversityRatio / 0.55;
+        }
+    }
+
+    // Cap single-class passwords to reflect their smaller keyspace.
+    if (charTypeCount === 1) {
+        if (hasDigit) {
+            score = Math.min(score, length >= 20 ? 65 : 55);
+        } else {
+            score = Math.min(score, length >= 20 ? 80 : 75);
+        }
+    }
+
+    return Math.max(0, Math.min(100, score));
 }
 
 /**
  * 更新密码强度标签
  */
 function updateStrengthLabel(strength) {
-    // 更新当前强度值
     currentStrength = strength;
-    
-    // 移除所有可能的类名
+
     strengthLabel.classList.remove(
-        'bg-orange-bright', 'bg-orange-light', 'bg-orange-pale', 
+        'bg-orange-bright', 'bg-orange-light', 'bg-orange-pale',
         'bg-green-pale', 'bg-green-bright'
     );
-    
-    // 添加对应强度的类名和文本
+
     if (strength === 0) {
         strengthLabel.classList.add('bg-orange-bright');
         strengthLabel.textContent = texts.labelStrength1;
@@ -539,9 +612,8 @@ function updateStrengthLabel(strength) {
         strengthLabel.classList.add('bg-green-bright');
         strengthLabel.textContent = texts.labelStrength5;
     }
-    
-    // 更新滑块颜色
-    if (slider && sliderBorderPart) {
+
+    if (slider) {
         applyFill(slider, sliderBorderPart);
     }
 }
@@ -550,61 +622,54 @@ function updateStrengthLabel(strength) {
  * 为刷新按钮添加旋转动画
  */
 function addRotateAnimation() {
-    if(!refreshButton) return;
-    
+    if (!refreshButton) return;
+
+    if (refreshAnimationTimer) {
+        clearTimeout(refreshAnimationTimer);
+    }
+    refreshButton.classList.remove('rotate');
+    void refreshButton.offsetWidth;
     refreshButton.classList.add('rotate');
-    setTimeout(() => {
+    refreshAnimationTimer = setTimeout(() => {
         refreshButton.classList.remove('rotate');
+        refreshAnimationTimer = null;
     }, 550);
 }
 
 /**
- * 添加复制按钮样式
+ * 添加复制按钮样式（兼容未更新样式表的场景）
  */
 function addCopyButtonStyle() {
-    // 删除可能存在的旧样式
-    const oldStyle = document.getElementById('copy-button-style');
-    if (oldStyle) {
-        oldStyle.parentNode.removeChild(oldStyle);
-    }
-    
-    // 创建新样式
+    if (document.getElementById('copy-button-style')) return;
+
     const style = document.createElement('style');
     style.id = 'copy-button-style';
     style.textContent = `
         .copy-btn {
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            position: relative !important;
-            overflow: hidden !important;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
         }
-        
         .copy-btn-text {
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            width: 100% !important;
-            transition: none !important;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
         }
-        
         .copy-success-icon {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            background-color: #52C41A !important;
-            color: white !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            transform: translateY(100%) !important;
-            transition: transform 0.2s ease !important;
+            position: absolute;
+            inset: 0;
+            background-color: #52C41A;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform: translateY(100%);
+            transition: transform 0.2s ease;
         }
-        
         .copy-btn.copied .copy-success-icon {
-            transform: translateY(0) !important;
+            transform: translateY(0);
         }
     `;
     document.head.appendChild(style);
@@ -617,6 +682,14 @@ async function copyPassword() {
     if (!passwordInput || !copyButton) return;
 
     const value = passwordInput.value;
+    if (!value) {
+        copyButton.classList.remove('copied');
+        if (copyButton.feedback) {
+            copyButton.feedback.textContent = '没有可复制的密码，请先生成密码。';
+        }
+        return;
+    }
+
     try {
         if (navigator.clipboard && window.isSecureContext) {
             await navigator.clipboard.writeText(value);
@@ -628,12 +701,18 @@ async function copyPassword() {
         }
 
         copyButton.classList.add('copied');
+        copyButton.setAttribute('aria-label', '已复制');
         if (copyButton.feedback) copyButton.feedback.textContent = '';
         if (copyButton.resetTimer) clearTimeout(copyButton.resetTimer);
-        copyButton.resetTimer = setTimeout(() => copyButton.classList.remove('copied'), 1000);
+        copyButton.resetTimer = setTimeout(() => {
+            copyButton.classList.remove('copied');
+            copyButton.removeAttribute('aria-label');
+            copyButton.resetTimer = null;
+        }, 1000);
     } catch (err) {
         console.error('复制失败:', err);
         copyButton.classList.remove('copied');
+        copyButton.removeAttribute('aria-label');
         if (copyButton.feedback) {
             copyButton.feedback.textContent = '复制失败，请手动选择并复制密码。';
         }
