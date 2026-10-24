@@ -455,6 +455,12 @@ function getSecureRandomInt(max) {
  * 根据配置生成密码
  */
 function generatePassword() {
+    // 任何显式生成都作废仍在排队的滑块防抖；否则勾选字符类或点按加减号后，
+    // 约 50ms 后还会再随机一次，把刚生成（或刚复制）的密码冲掉。
+    clearTimeout(sliderDebounceTimer);
+    sliderDebounceTimer = null;
+    sliderPendingGenerate = false;
+
     const activeCharsets = CHARSETS.filter((_, index) => config.complexity[index]);
     if (activeCharsets.length === 0) return;
 

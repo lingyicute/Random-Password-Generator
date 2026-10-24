@@ -245,6 +245,20 @@ test('keeps copy available for a manually entered password after a generator fai
   await expect(page.locator('.copy-feedback')).toHaveText('已复制');
 });
 
+test('does not generate twice when a slider debounce is still pending', async ({ page }) => {
+  // Simulate a drag: only 'input' events, which schedule a debounced generation.
+  await page.evaluate(() => {
+    const slider = document.querySelector('input[type="range"]');
+    slider.value = '30';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.locator('#specials').check();
+
+  const generated = await page.locator('.password').inputValue();
+  await page.waitForTimeout(200);
+  await expect(page.locator('.password')).toHaveValue(generated);
+});
+
 test('renders responsive 404 page with working home link', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto('/404.html');
