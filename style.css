@@ -612,7 +612,8 @@ body {
     width: 320px;
     text-overflow: ellipsis;
     padding-right: 9.5rem;
-    pointer-events: none;
+    cursor: text;
+    user-select: text;
   }
 }
 
