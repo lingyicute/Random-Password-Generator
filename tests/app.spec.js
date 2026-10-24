@@ -17,6 +17,26 @@ test('creates a password of the selected length from the selected classes', asyn
   await expect(page.locator('.length-settings .fw-bold')).toHaveText('32');
 });
 
+test('guarantees every selected character class is represented when length permits', async ({ page }) => {
+  await page.locator('#specials').check();
+  const slider = page.locator('input[type="range"]');
+  await slider.fill('4');
+  await slider.dispatchEvent('change');
+
+  const passwordInput = page.locator('.password');
+  const refresh = page.locator('.icon-refresh');
+
+  for (let i = 0; i < 8; i++) {
+    const val = await passwordInput.inputValue();
+    expect(val).toHaveLength(4);
+    expect(val).toMatch(/[A-Z]/);
+    expect(val).toMatch(/[a-z]/);
+    expect(val).toMatch(/[0-9]/);
+    expect(val).toMatch(/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/);
+    await refresh.click();
+  }
+});
+
 test('does not allow an empty character set', async ({ page }) => {
   // Add a replacement character class before removing defaults; the final
   // active checkbox should remain checked and disabled.
@@ -31,25 +51,34 @@ test('does not allow an empty character set', async ({ page }) => {
   await expect(page.locator('.password')).toHaveValue(/^[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]{15}$/);
 });
 
-test('reports clipboard failures accessibly and allows manual selection', async ({ page }) => {
+test('reports clipboard failures accessibly, keeps button geometry stable, and allows manual selection', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  const copyBtn = page.locator('#pwd-copy-btn');
+  const password = page.locator('.password');
+  const beforeRect = await copyBtn.boundingBox();
+  const inputRect = await password.boundingBox();
+  expect(Math.abs((beforeRect.y + beforeRect.height / 2) - (inputRect.y + inputRect.height / 2))).toBeLessThanOrEqual(1);
+
   await page.evaluate(() => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: { writeText: () => Promise.reject(new Error('clipboard unavailable')) },
     });
   });
-  await page.locator('#pwd-copy-btn').click();
+  await copyBtn.click();
   await expect(page.locator('.copy-feedback')).toHaveText('复制失败，请手动选择并复制密码。');
   await expect(page.locator('.copy-feedback')).toHaveAttribute('aria-live', 'polite');
 
-  const password = page.locator('.password');
+  const afterRect = await copyBtn.boundingBox();
+  expect(Math.abs(afterRect.width - beforeRect.width)).toBeLessThanOrEqual(1);
+
   await password.click();
   await expect(password).toBeFocused();
   await expect(password).toHaveCSS('pointer-events', 'auto');
 });
 
-test('shows success only after the clipboard write succeeds', async ({ page }) => {
-  let copiedText = '';
+test('shows success only after the clipboard write succeeds and resets state on regenerate', async ({ page }) => {
   await page.evaluate(() => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -57,23 +86,57 @@ test('shows success only after the clipboard write succeeds', async ({ page }) =
     });
   });
 
-  await page.locator('#pwd-copy-btn').click();
-  copiedText = await page.evaluate(() => window.__copiedText);
-  await expect(page.locator('#pwd-copy-btn')).toHaveClass(/copied/);
+  const copyBtn = page.locator('#pwd-copy-btn');
+  await copyBtn.click();
+  const copiedText = await page.evaluate(() => window.__copiedText);
+  await expect(copyBtn).toHaveClass(/copied/);
   expect(copiedText).toBe(await page.locator('.password').inputValue());
   await expect(page.locator('.copy-feedback')).toBeEmpty();
+
+  // Keyboard regeneration clears stale copied indicator immediately.
+  const refresh = page.locator('.icon-refresh');
+  await refresh.focus();
+  await page.keyboard.press('Enter');
+  await expect(copyBtn).not.toHaveClass(/copied/);
 });
 
-test('keeps length controls within their supported bounds', async ({ page }) => {
+test('updates strength live on manual edits and penalizes repeated characters', async ({ page }) => {
+  const password = page.locator('.password');
+  const badge = page.locator('#password-strength');
+
+  await password.fill('111111111111111');
+  await expect(badge).toHaveText('极弱');
+
+  await password.fill('Abc123!@#Xyz789$');
+  await expect(badge).toHaveText('很强');
+
+  await password.fill('');
+  await page.locator('#pwd-copy-btn').click();
+  await expect(page.locator('#pwd-copy-btn')).not.toHaveClass(/copied/);
+  await expect(page.locator('.copy-feedback')).toHaveText('没有可复制的密码，请先生成密码。');
+});
+
+test('keeps length controls within their supported bounds and syncs button states', async ({ page }) => {
   const slider = page.locator('input[type="range"]');
+  const minusBtn = page.locator('.slider-settings .button-circle:first-child');
+  const plusBtn = page.locator('.slider-settings .button-circle:last-child');
+
   await slider.fill('1');
   await slider.dispatchEvent('change');
-  await page.locator('.slider-settings .button-circle:first-child').click();
+  await expect(minusBtn).toHaveClass(/disabled/);
+  await expect(plusBtn).not.toHaveClass(/disabled/);
+  await minusBtn.click();
   await expect(page.locator('.length-settings .fw-bold')).toHaveText('1');
+
+  await slider.fill('20');
+  await slider.dispatchEvent('change');
+  await expect(minusBtn).not.toHaveClass(/disabled/);
+  await expect(plusBtn).not.toHaveClass(/disabled/);
 
   await slider.fill('50');
   await slider.dispatchEvent('change');
-  await page.locator('.slider-settings .button-circle:last-child').click();
+  await expect(plusBtn).toHaveClass(/disabled/);
+  await plusBtn.click();
   await expect(page.locator('.length-settings .fw-bold')).toHaveText('50');
   await expect(page.locator('.password')).toHaveValue(/^.{50}$/);
 });
@@ -88,6 +151,7 @@ test('keeps the main controls within representative viewport widths', async ({ p
         '.password-generator .image-container',
         '.password-generator .input-container',
         '.password-generator .slider-settings',
+        '.password-generator .complexity-checkbox',
       ];
       return selectors.map(selector => {
         const rect = document.querySelector(selector).getBoundingClientRect();
@@ -101,4 +165,15 @@ test('keeps the main controls within representative viewport widths', async ({ p
       expect(rect.right, `${width}px: ${rect.selector} should not overflow on the right`).toBeLessThanOrEqual(width + 1);
     }
   }
+});
+
+test('renders responsive 404 page with working home link', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto('/404.html');
+
+  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(scrollWidth).toBeLessThanOrEqual(320);
+
+  await page.locator('.back-home').click();
+  await expect(page.locator('h1')).toContainText('随机密码生成器');
 });
