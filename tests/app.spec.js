@@ -355,3 +355,15 @@ test('renders responsive 404 page with working home link', async ({ page }) => {
   await page.locator('.back-home').click();
   await expect(page.locator('h1')).toContainText('随机密码生成器');
 });
+
+test.describe('without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('tells the visitor that JavaScript is required', async ({ page }) => {
+    await page.goto('/');
+
+    await expect(page.locator('.no-js-notice')).toHaveText('本工具需要启用 JavaScript 才能生成密码。');
+    // The overlay can never be dismissed without scripts, so it must stay hidden.
+    await expect(page.locator('#loadingOverlay')).toBeHidden();
+  });
+});

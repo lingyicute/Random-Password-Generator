@@ -4,3 +4,15 @@
 .loading-overlay {
   display: none !important;
 }
+
+/* Shown when the generator script never runs. */
+.no-js-notice {
+  margin: 0;
+  padding: 0.875rem 1rem;
+  background-color: #fff4e5;
+  border-bottom: 1px solid #ffd591;
+  color: #7a4f01;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  text-align: center;
+}
