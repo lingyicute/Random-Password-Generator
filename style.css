@@ -1402,6 +1402,15 @@ body {
   }
 
   .password-generator .generator-container .generator-settings .length-settings .slider-settings .button-circle:is(:first-child, :last-child) {
-    margin-inline: 10vw;
+    margin-inline: 0;
+  }
+
+  .password-generator .generator-container .generator-settings .slider-container {
+    flex: 0 1 auto;
+    width: clamp(120px, calc(100vw - 160px), 220px);
+  }
+
+  .password-generator .generator-container .generator-settings input[type="range"] {
+    width: 100%;
   }
 }
