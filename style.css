@@ -1276,3 +1276,35 @@ button:not(:disabled) {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   加载遮罩层与页面级细节
+   这些规则原先内联在 index.html 中，为了让 style-src 'self' 生效而移到这里。
+   --------------------------------------------------------------------------- */
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: #ffffff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  transition: opacity 0.4s ease;
+}
+
+.loading-overlay img {
+  width: 80px;
+  height: 80px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-overlay {
+    transition: none;
+  }
+}
+
+.footer-divider {
+  margin-top: 5rem;
+  margin-bottom: 2rem;
+}

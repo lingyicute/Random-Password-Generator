@@ -2,6 +2,9 @@
 <html lang="zh-CN">
    <head>
       <meta charset="utf-8">
+      <!-- Strict CSP: everything is same-origin (fonts, images, the single script).
+           No inline <style>/<script> is allowed, so keep new code in style.css / app.js. -->
+      <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
       <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
       <title>随机密码生成器 by lingyicute - 精锻数字符印，永固赛博边关</title>
       <meta name="description" content="创建强大且安全的密码，保护您的在线账户安全。Made with ❤️ by lingyicute">
@@ -12,34 +15,9 @@
       <link rel="shortcut icon" href="./favicon.ico" sizes="32x32" type="image/x-icon">
       <link rel="icon" href="./images/icon/192.png" sizes="192x192" type="image/png" />
       <link rel="icon" href="./images/icon/512.png" sizes="512x512" type="image/png" />
-      <style>
-         .loading-overlay {
-            position: fixed;
-            inset: 0;
-            background-color: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            transition: opacity 0.4s ease;
-         }
-         .loading-overlay img {
-            width: 80px;
-            height: 80px;
-         }
-         @media (prefers-reduced-motion: reduce) {
-            .loading-overlay {
-               transition: none;
-            }
-         }
-      </style>
-      <noscript>
-         <style>
-            .loading-overlay {
-               display: none !important;
-            }
-         </style>
-      </noscript>
+      <!-- Inline <style> inside <noscript> is blocked by the CSP above, so the
+           no-JS fallback is a same-origin stylesheet instead. -->
+      <noscript><link rel="stylesheet" href="./no-js.css"></noscript>
       <script src="./app.js" defer></script>
    </head>
    <body>
@@ -149,53 +127,11 @@
             </div>
 
             <footer class="container">
-               <hr style="margin-top: 5rem; margin-bottom: 2rem;">
+               <hr class="footer-divider">
                <p class="body-4 text-muted text-center">Copyright &copy; 2025-2026 lingyicute · Made with love ❤️</p>
             </footer>
          </section>
       </main>
 
-      <script>
-         document.addEventListener('DOMContentLoaded', function() {
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            if (!loadingOverlay) return;
-
-            const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            const startTime = Date.now();
-            let hidden = false;
-
-            function hideLoadingOverlay() {
-               if (hidden) return;
-               hidden = true;
-
-               const elapsedTime = Date.now() - startTime;
-               const remainingTime = Math.max(0, 300 - elapsedTime);
-
-               setTimeout(function() {
-                  loadingOverlay.style.pointerEvents = 'none';
-                  if (prefersReducedMotion) {
-                     loadingOverlay.style.display = 'none';
-                     return;
-                  }
-                  loadingOverlay.style.opacity = '0';
-                  setTimeout(function() {
-                     loadingOverlay.style.display = 'none';
-                  }, 400);
-               }, remainingTime);
-            }
-
-            const windowLoaded = document.readyState === 'complete'
-               ? Promise.resolve()
-               : new Promise(function(resolve) {
-                    window.addEventListener('load', resolve, { once: true });
-                 });
-            const fontsLoaded = document.fonts && document.fonts.ready
-               ? document.fonts.ready.catch(function() {})
-               : Promise.resolve();
-
-            Promise.all([windowLoaded, fontsLoaded]).then(hideLoadingOverlay);
-            setTimeout(hideLoadingOverlay, 8000);
-         });
-      </script>
    </body>
 </html>

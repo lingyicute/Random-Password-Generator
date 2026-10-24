@@ -1,0 +1,6 @@
+/* Loaded only inside <noscript>: without JavaScript the overlay can never be
+   dismissed, so hide it. A stylesheet is used instead of an inline <style>
+   because the page runs under a strict Content-Security-Policy. */
+.loading-overlay {
+  display: none !important;
+}

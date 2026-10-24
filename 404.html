@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- This page is intentionally self-contained (one file works on any static host),
+       so its styles stay inline and style-src allows 'unsafe-inline'. There is no
+       script at all, which is what script-src 'none' enforces. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
   <title>404 Not Found - 随机密码生成器</title>
   <meta name="description" content="页面未找到 - 随机密码生成器 by lingyicute">
   <style>

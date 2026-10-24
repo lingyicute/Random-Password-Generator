@@ -749,3 +749,50 @@ async function copyPassword() {
         }
     }
 }
+
+/**
+ * 加载遮罩层
+ *
+ * 原先写在 index.html 的内联 <script> 里；为了启用严格 CSP（script-src 'self'）
+ * 移到此处。单独注册监听器，避免初始化抛错时遮罩永远不消失。
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    if (!loadingOverlay) return;
+
+    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const startTime = Date.now();
+    let hidden = false;
+
+    function hideLoadingOverlay() {
+        if (hidden) return;
+        hidden = true;
+
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, 300 - elapsedTime);
+
+        setTimeout(function() {
+            loadingOverlay.style.pointerEvents = 'none';
+            if (prefersReducedMotion) {
+                loadingOverlay.style.display = 'none';
+                return;
+            }
+            loadingOverlay.style.opacity = '0';
+            setTimeout(function() {
+                loadingOverlay.style.display = 'none';
+            }, 400);
+        }, remainingTime);
+    }
+
+    const windowLoaded = document.readyState === 'complete'
+        ? Promise.resolve()
+        : new Promise(function(resolve) {
+            window.addEventListener('load', resolve, { once: true });
+        });
+    const fontsLoaded = document.fonts && document.fonts.ready
+        ? document.fonts.ready.catch(function() {})
+        : Promise.resolve();
+
+    Promise.all([windowLoaded, fontsLoaded]).then(hideLoadingOverlay);
+    setTimeout(hideLoadingOverlay, 8000);
+});
