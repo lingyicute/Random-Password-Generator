@@ -155,9 +155,6 @@ function setupCopyButton() {
     successSpan.textContent = texts.labelCopied;
     copyButton.appendChild(successSpan);
 
-    copyButton.textSpan = textSpan;
-    copyButton.successDiv = successSpan;
-
     // Visible, screen-reader-announced feedback for clipboard failures.
     let feedback = document.querySelector('.copy-feedback');
     if (!feedback) {
