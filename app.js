@@ -247,7 +247,7 @@ function initEventListeners() {
         if(checkbox) {
             checkbox.addEventListener('change', function() {
                 config.complexity[index] = this.checked;
-                preventUncheckAll();
+                if (!preventUncheckAll(this, index)) return;
                 generatePassword();
             });
         }
@@ -344,18 +344,22 @@ function decreaseLength() {
 /**
  * 防止所有复选框都被取消选中
  */
-function preventUncheckAll() {
-    const checkedCount = config.complexity.filter(value => value).length;
-    
-    console.log("选中的复选框数量:", checkedCount);
-    
-    if (checkedCount === 1) {
-        config.disableChecked = true;
-    } else {
-        config.disableChecked = false;
+function preventUncheckAll(changedCheckbox, changedIndex) {
+    const checkedCount = config.complexity.filter(Boolean).length;
+
+    // Keep the model and the controls in sync: an empty character set is not
+    // a valid user selection (and silently falling back to all chars is confusing).
+    if (checkedCount === 0) {
+        if (changedCheckbox) {
+            changedCheckbox.checked = true;
+            config.complexity[changedIndex] = true;
+        }
+        return false;
     }
-    
+
+    config.disableChecked = checkedCount === 1;
     updateCheckboxesDisabled();
+    return true;
 }
 
 /**
@@ -388,18 +392,28 @@ function generatePassword() {
     if (config.complexity[2]) charset += '0123456789';
     if (config.complexity[3]) charset += '!@#$%^&*()_+-=[]{}|;:,.<>?';
     
-    // 如果没有选择任何字符集，默认使用所有字符
-    if (charset === '') {
-        charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+    if (!charset) return;
+
+    // Web Crypto is required for security-sensitive randomness. Rejection
+    // sampling avoids modulo bias when the charset length does not divide 256.
+    if (!window.crypto || typeof window.crypto.getRandomValues !== 'function') {
+        if (passwordInput) passwordInput.value = '';
+        if (strengthLabel) strengthLabel.textContent = '需要安全随机数支持';
+        return;
     }
-    
-    // 生成密码
-    let password = '';
-    for (let i = 0; i < config.length; i++) {
-        const randomIndex = Math.floor(Math.random() * charset.length);
-        password += charset[randomIndex];
+
+    const passwordChars = [];
+    const limit = Math.floor(256 / charset.length) * charset.length;
+    const randomBytes = new Uint8Array(64);
+    while (passwordChars.length < config.length) {
+        window.crypto.getRandomValues(randomBytes);
+        for (const byte of randomBytes) {
+            if (byte < limit) passwordChars.push(charset[byte % charset.length]);
+            if (passwordChars.length === config.length) break;
+        }
     }
-    
+    const password = passwordChars.join('');
+
     // 更新输入框
     if(passwordInput) {
         passwordInput.value = password;
@@ -590,29 +604,25 @@ function addCopyButtonStyle() {
 /**
  * 复制密码到剪贴板
  */
-function copyPassword() {
+async function copyPassword() {
     if (!passwordInput || !copyButton) return;
-    
-    // 选择并复制密码
-    passwordInput.select();
-    passwordInput.setSelectionRange(0, 99999); // 为移动设备
-    
+
+    const value = passwordInput.value;
     try {
-        document.execCommand('copy');
-        
-        // 显示复制成功状态
-        copyButton.classList.add('copied');
-        
-        // 设置重置计时器
-        if (copyButton.resetTimer) {
-            clearTimeout(copyButton.resetTimer);
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(value);
+        } else {
+            passwordInput.focus();
+            passwordInput.select();
+            passwordInput.setSelectionRange(0, value.length);
+            if (!document.execCommand('copy')) throw new Error('浏览器拒绝复制');
         }
-        
-        copyButton.resetTimer = setTimeout(() => {
-            copyButton.classList.remove('copied');
-        }, 1000);
-        
+
+        copyButton.classList.add('copied');
+        if (copyButton.resetTimer) clearTimeout(copyButton.resetTimer);
+        copyButton.resetTimer = setTimeout(() => copyButton.classList.remove('copied'), 1000);
     } catch (err) {
         console.error('复制失败:', err);
+        copyButton.classList.remove('copied');
     }
-} 
+}
