@@ -314,6 +314,20 @@ body {
   }
 }
 
+/* Keep the illustration above the controls until there is enough room for a
+   two-column layout; the 960px container at this breakpoint is too narrow for
+   the fixed-width illustration and generator controls side by side. */
+@media (min-width: 992px) and (max-width: 1279px) {
+  .password-generator .generator-container {
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .password-generator .generator-container .generator {
+    width: min(100%, 760px);
+  }
+}
+
 @media (min-width: 1280px) {
   .password-generator .generator-container {
     gap: 2.5rem;
