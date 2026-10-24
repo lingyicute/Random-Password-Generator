@@ -4,6 +4,22 @@
 
 ![image](./screenshot.png)
 
+## Try it
+
+[p.92li.uk](https://p.92li.uk)
+
+## Running tests
+
+The browser tests use Playwright and Chromium. Install dependencies and the browser, then run the suite:
+
+```sh
+npm ci
+npx playwright install --with-deps chromium
+npm test
+```
+
+The Playwright config serves this static site locally with Python 3. Tests cover password length and selected character sets, the minimum-one-character-class rule, clipboard success/failure feedback, length boundaries, and layout fit from 320px through desktop viewports.
+
 ## 🗂️ License
 
 Random-Password-Generator is released under the GNU General Public License v3.0 (GPLv3).
@@ -22,15 +38,3 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see https://www.gnu.org/licenses.
-
-## Running tests
-
-The browser tests use Playwright and Chromium. Install dependencies and the browser, then run the suite:
-
-```sh
-npm ci
-npx playwright install --with-deps chromium
-npm test
-```
-
-The Playwright config serves this static site locally with Python 3. Tests cover password length and selected character sets, the minimum-one-character-class rule, clipboard success/failure feedback, length boundaries, and layout fit from 320px through desktop viewports.
