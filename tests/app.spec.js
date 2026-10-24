@@ -4,6 +4,13 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/');
 });
 
+test('exposes descriptive accessible names for abbreviated character-class controls', async ({ page }) => {
+  await expect(page.getByRole('checkbox', { name: '大写字母 A 到 Z' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: '小写字母 a 到 z' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: '数字 0 到 9' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: '特殊字符' })).not.toBeChecked();
+});
+
 test('recommends a current minimum length for single-factor passwords', async ({ page }) => {
   await expect(page.locator('.feature-item-text').first()).toContainText('至少使用15个字符');
 });
