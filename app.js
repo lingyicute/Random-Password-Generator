@@ -61,7 +61,6 @@ const texts = {
 let passwordInput;
 let strengthLabel;
 let slider;
-let sliderBorderPart;
 let lengthDisplay;
 let minusButton;
 let plusButton;
@@ -101,7 +100,6 @@ function initElements() {
     passwordInput = document.querySelector('.password');
     strengthLabel = document.querySelector('.form-floating .label');
     slider = document.querySelector('input[type="range"]');
-    sliderBorderPart = document.getElementById('slider-border-part');
     lengthDisplay = document.querySelector('.length-settings .fw-bold');
     minusButton = document.querySelector('.slider-settings .button-circle:first-child');
     plusButton = document.querySelector('.slider-settings .button-circle:last-child');
@@ -131,7 +129,7 @@ function initElements() {
 
     if (slider) {
         slider.value = String(config.length);
-        applyFill(slider, sliderBorderPart);
+        applyFill(slider);
     }
 
     if (copyButton) {
@@ -279,7 +277,7 @@ function initEventListeners() {
                 lengthDisplay.textContent = String(config.length);
             }
             updateLengthButtons();
-            applyFill(slider, sliderBorderPart);
+            applyFill(slider);
 
             if (newValue !== lastSliderValue) {
                 lastSliderValue = newValue;
@@ -349,7 +347,7 @@ function updateUI() {
 
     if (slider) {
         slider.value = String(config.length);
-        applyFill(slider, sliderBorderPart);
+        applyFill(slider);
     }
 
     updateLengthButtons();
@@ -359,23 +357,17 @@ function updateUI() {
 /**
  * 应用滑块填充样式
  */
-function applyFill(sliderEl, borderPart) {
+function applyFill(sliderEl) {
     if (!sliderEl) return;
 
     const min = Number(sliderEl.min || MIN_PASSWORD_LENGTH);
     const max = Number(sliderEl.max || MAX_PASSWORD_LENGTH);
     const val = clampLength(sliderEl.value);
     const ratio = max > min ? (val - min) / (max - min) : 0;
-    const percent = ratio * 100;
     const color = strengthColors[currentStrength] || '#0070f6';
     const stop = `calc(9px + (100% - 18px) * ${ratio})`;
 
     sliderEl.style.backgroundImage = `linear-gradient(90deg, ${color} 0%, ${color} ${stop}, #eef2f6 ${stop}, #eef2f6 100%)`;
-
-    if (borderPart) {
-        borderPart.style.width = `${percent}%`;
-        borderPart.style.backgroundColor = color;
-    }
 }
 
 /**
@@ -667,7 +659,7 @@ function updateStrengthLabel(strength) {
     }
 
     if (slider) {
-        applyFill(slider, sliderBorderPart);
+        applyFill(slider);
     }
 }
 

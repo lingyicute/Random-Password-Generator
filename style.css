@@ -1007,10 +1007,6 @@ button:not(:disabled) {
   outline-offset: 4px;
 }
 
-.password-generator .generator-settings #slider-border-part {
-  display: none;
-}
-
 .password-generator .generator-container .generator-settings input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
