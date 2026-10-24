@@ -24,7 +24,7 @@ The Playwright config serves this static site locally with Python 3. Tests cover
 
 Random-Password-Generator is released under the GNU General Public License v3.0 (GPLv3).
 
-Copyright (C) 2024-2026 lingyicute.
+Copyright (C) 2024 lingyicute.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
