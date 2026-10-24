@@ -296,9 +296,11 @@ function updateLengthButtons() {
 
     if (minusButton) {
         minusButton.classList.toggle('disabled', atMin);
+        minusButton.disabled = atMin;
     }
     if (plusButton) {
         plusButton.classList.toggle('disabled', atMax);
+        plusButton.disabled = atMax;
     }
 }
 
