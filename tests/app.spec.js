@@ -4,6 +4,10 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/');
 });
 
+test('recommends a current minimum length for single-factor passwords', async ({ page }) => {
+  await expect(page.locator('.feature-item-text').first()).toContainText('至少使用15个字符');
+});
+
 test('creates a password of the selected length from the selected classes', async ({ page }) => {
   const password = page.locator('.password');
   await expect(password).toHaveValue(/^[A-Za-z0-9]{15}$/);
