@@ -60,6 +60,26 @@ test('does not allow an empty character set', async ({ page }) => {
   await expect(specials).toBeChecked();
   await expect(specials).toBeDisabled();
   await expect(page.locator('.password')).toHaveValue(/^[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]{15}$/);
+
+  // The locked checkbox is explained, not just disabled.
+  const group = page.locator('.complexity-checkbox');
+  await expect(group).toHaveAttribute('aria-describedby', 'charset-hint');
+  await expect(page.locator('#charset-hint')).toHaveText('至少需要保留一种字符');
+  await expect(page.locator('#charset-hint')).toHaveAttribute('role', 'status');
+
+  // Even if the disabled guard is bypassed, the model refuses the empty selection.
+  await page.evaluate(() => {
+    const specials = document.querySelector('#specials');
+    specials.disabled = false;
+    specials.click();
+  });
+  await expect(specials).toBeChecked();
+  await expect(page.locator('#charset-hint')).toHaveText('至少需要保留一种字符');
+
+  // Restoring a second class clears the explanation again.
+  await page.locator('#numbers').check();
+  await expect(page.locator('#charset-hint')).toHaveText('');
+  await expect(specials).toBeEnabled();
 });
 
 test('reports clipboard failures accessibly, keeps button geometry stable, and allows manual selection', async ({ page }) => {

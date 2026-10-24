@@ -53,7 +53,8 @@ const texts = {
     labelStrength2: strengthLabels.weak,
     labelStrength3: strengthLabels.mediocre,
     labelStrength4: strengthLabels.strong,
-    labelStrength5: strengthLabels.veryStrong
+    labelStrength5: strengthLabels.veryStrong,
+    charsetHint: "至少需要保留一种字符"
 };
 
 // DOM元素
@@ -425,6 +426,13 @@ function updateCheckboxesDisabled() {
     checkboxes.lowercase.disabled = disableSingleChecked && config.complexity[1];
     checkboxes.numbers.disabled = disableSingleChecked && config.complexity[2];
     checkboxes.specials.disabled = disableSingleChecked && config.complexity[3];
+
+    // 只禁用而不解释，用户只会听到“不可用”。用 aria-describedby（#charset-hint）
+    // 说明这是“至少保留一种字符类”的规则。
+    const hint = document.getElementById('charset-hint');
+    if (hint) {
+        hint.textContent = disableSingleChecked ? texts.charsetHint : '';
+    }
 }
 
 /**

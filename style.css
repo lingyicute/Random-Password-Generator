@@ -1087,6 +1087,30 @@ button:not(:disabled) {
   }
 }
 
+.password-generator .generator-container .generator-settings .complexity-settings .charset-hint {
+  /* The hint only appears while the last remaining class is locked; keep the
+     reserved height so the settings block does not jump. */
+  margin: 0;
+  min-height: 1.25rem;
+  color: #526675;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  text-align: center;
+}
+
+@media (min-width: 992px) {
+  .password-generator .generator-container .generator-settings .complexity-settings {
+    position: relative;
+  }
+
+  .password-generator .generator-container .generator-settings .complexity-settings .charset-hint {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+  }
+}
+
 .password-generator .generator-settings .complexity-settings .custom-checkbox {
   display: flex;
   justify-content: center;
