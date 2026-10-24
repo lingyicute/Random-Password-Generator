@@ -100,6 +100,21 @@ test('shows success only after the clipboard write succeeds and resets state on 
   await expect(copyBtn).not.toHaveClass(/copied/);
 });
 
+test('does not show stale clipboard success after the password changes during the write', async ({ page }) => {
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => new Promise(resolve => { window.__resolveClipboardWrite = resolve; }) },
+    });
+  });
+
+  await page.locator('#pwd-copy-btn').click();
+  await page.locator('.password').fill('new-password-value');
+  await page.evaluate(() => window.__resolveClipboardWrite());
+  await expect(page.locator('#pwd-copy-btn')).not.toHaveClass(/copied/);
+  await expect(page.locator('.copy-feedback')).toBeEmpty();
+});
+
 test('fails closed if Web Crypto exists but refuses to provide random bytes', async ({ page }) => {
   await page.evaluate(() => {
     Object.defineProperty(window.crypto, 'getRandomValues', {

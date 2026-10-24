@@ -658,6 +658,7 @@ async function copyPassword() {
     if (!passwordInput || !copyButton) return;
 
     const value = passwordInput.value;
+    if (copyButton.getAttribute('aria-disabled') === 'true') return;
     if (!value) {
         copyButton.classList.remove('copied');
         if (copyButton.feedback) {
@@ -676,6 +677,9 @@ async function copyPassword() {
             if (!document.execCommand('copy')) throw new Error('浏览器拒绝复制');
         }
 
+        // Clipboard writes are asynchronous. Do not show success for a password
+        // that the user has since edited or replaced.
+        if (passwordInput.value !== value) return;
         copyButton.classList.add('copied');
         copyButton.setAttribute('aria-label', '已复制');
         if (copyButton.feedback) copyButton.feedback.textContent = '';
@@ -686,6 +690,7 @@ async function copyPassword() {
             copyButton.resetTimer = null;
         }, 1000);
     } catch (err) {
+        if (passwordInput.value !== value) return;
         console.error('复制失败:', err);
         copyButton.classList.remove('copied');
         copyButton.removeAttribute('aria-label');
