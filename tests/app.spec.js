@@ -102,6 +102,7 @@ test('shows success only after the clipboard write succeeds and resets state on 
   const copiedText = await page.evaluate(() => window.__copiedText);
   await expect(copyBtn).toHaveClass(/copied/);
   expect(copiedText).toBe(await page.locator('.password').inputValue());
+  await expect(page.locator('.copy-feedback')).toHaveText('已复制');
   await expect(page.locator('.copy-feedback')).toBeEmpty();
 
   // Keyboard regeneration clears stale copied indicator immediately.
@@ -137,6 +138,7 @@ test('fails closed if Web Crypto exists but refuses to provide random bytes', as
   await page.locator('.icon-refresh').click();
   await expect(page.locator('.password')).toHaveValue('');
   await expect(page.locator('#pwd-copy-btn')).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.locator('#pwd-copy-btn')).toBeDisabled();
   await expect(page.locator('.copy-feedback')).toHaveText('安全随机数生成失败，请更换浏览器或环境后重试。');
 });
 
@@ -213,6 +215,34 @@ test('keeps the main controls within representative viewport widths', async ({ p
       expect(rect.right, `${width}px: ${rect.selector} should not overflow on the right`).toBeLessThanOrEqual(width + 1);
     }
   }
+});
+
+test('keeps copy available for a manually entered password after a generator failure', async ({ page }) => {
+  await page.evaluate(() => {
+    Object.defineProperty(window.crypto, 'getRandomValues', {
+      configurable: true,
+      value: () => { throw new Error('entropy unavailable'); },
+    });
+  });
+  await page.locator('.icon-refresh').click();
+  await expect(page.locator('#pwd-copy-btn')).toBeDisabled();
+
+  // The generator is unusable, but the field is still a text input: whatever the
+  // user types must stay copyable, and the stale failure notice should clear.
+  await page.locator('.password').fill('my-manual-secret');
+  await expect(page.locator('#pwd-copy-btn')).toBeEnabled();
+  await expect(page.locator('#pwd-copy-btn')).not.toHaveAttribute('aria-disabled', 'true');
+  await expect(page.locator('.copy-feedback')).toBeEmpty();
+
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: text => { window.__copiedText = text; return Promise.resolve(); } },
+    });
+  });
+  await page.locator('#pwd-copy-btn').click();
+  expect(await page.evaluate(() => window.__copiedText)).toBe('my-manual-secret');
+  await expect(page.locator('.copy-feedback')).toHaveText('已复制');
 });
 
 test('renders responsive 404 page with working home link', async ({ page }) => {

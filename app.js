@@ -193,6 +193,24 @@ function resetCopyState() {
 }
 
 /**
+ * 根据是否存在可复制的密码，同步复制按钮的可用状态
+ *
+ * 生成失败时复制按钮会被禁用；但只要用户手动输入了内容，就必须重新可用，
+ * 否则“安全随机数不可用”会连带剥夺手动输入密码的复制能力。
+ */
+function setCopyAvailability(available) {
+    if (!copyButton) return;
+
+    copyButton.classList.toggle('disabled', !available);
+    copyButton.disabled = !available;
+    if (available) {
+        copyButton.removeAttribute('aria-disabled');
+    } else {
+        copyButton.setAttribute('aria-disabled', 'true');
+    }
+}
+
+/**
  * 规范化密码长度范围
  */
 function clampLength(value) {
@@ -222,6 +240,9 @@ function initEventListeners() {
     if (passwordInput) {
         passwordInput.addEventListener('input', function() {
             resetCopyState();
+            // 手动输入可能是生成器不可用时唯一的来源，因此复制按钮要跟随输入框，
+            // 而不是跟随“上一次生成是否成功”。
+            setCopyAvailability(true);
             updatePasswordStrength(this.value);
         });
     }
@@ -447,19 +468,11 @@ function generatePassword() {
             updateStrengthLabel(0);
             strengthLabel.textContent = '不可用';
         }
-        if (copyButton) {
-            copyButton.classList.add('disabled');
-            copyButton.setAttribute('aria-disabled', 'true');
-            if (copyButton.feedback) {
-                copyButton.feedback.textContent = '当前环境不支持安全随机数生成。';
-            }
+        setCopyAvailability(false);
+        if (copyButton && copyButton.feedback) {
+            copyButton.feedback.textContent = '当前环境不支持安全随机数生成。';
         }
         return;
-    }
-
-    if (copyButton) {
-        copyButton.classList.remove('disabled');
-        copyButton.removeAttribute('aria-disabled');
     }
 
     const combinedCharset = activeCharsets.join('');
@@ -493,12 +506,9 @@ function generatePassword() {
             updateStrengthLabel(0);
             strengthLabel.textContent = '不可用';
         }
-        if (copyButton) {
-            copyButton.classList.add('disabled');
-            copyButton.setAttribute('aria-disabled', 'true');
-            if (copyButton.feedback) {
-                copyButton.feedback.textContent = '安全随机数生成失败，请更换浏览器或环境后重试。';
-            }
+        setCopyAvailability(false);
+        if (copyButton && copyButton.feedback) {
+            copyButton.feedback.textContent = '安全随机数生成失败，请更换浏览器或环境后重试。';
         }
         return;
     } finally {
@@ -513,6 +523,7 @@ function generatePassword() {
         updatePasswordStrength(password);
     }
 
+    setCopyAvailability(true);
     addRotateAnimation();
 }
 
@@ -660,7 +671,7 @@ async function copyPassword() {
     if (!passwordInput || !copyButton) return;
 
     const value = passwordInput.value;
-    if (copyButton.getAttribute('aria-disabled') === 'true') return;
+    if (copyButton.disabled || copyButton.getAttribute('aria-disabled') === 'true') return;
     if (!value) {
         copyButton.classList.remove('copied');
         if (copyButton.feedback) {
@@ -684,11 +695,14 @@ async function copyPassword() {
         if (passwordInput.value !== value) return;
         copyButton.classList.add('copied');
         copyButton.setAttribute('aria-label', '已复制');
-        if (copyButton.feedback) copyButton.feedback.textContent = '';
+        // 与失败提示共用同一个 live region：给聚焦按钮临时改 aria-label
+        // 并不能被读屏可靠播报。
+        if (copyButton.feedback) copyButton.feedback.textContent = '已复制';
         if (copyButton.resetTimer) clearTimeout(copyButton.resetTimer);
         copyButton.resetTimer = setTimeout(() => {
             copyButton.classList.remove('copied');
             copyButton.removeAttribute('aria-label');
+            if (copyButton.feedback) copyButton.feedback.textContent = '';
             copyButton.resetTimer = null;
         }, 1000);
     } catch (err) {
