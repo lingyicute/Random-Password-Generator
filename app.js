@@ -430,6 +430,14 @@ function getRandomByte() {
 }
 
 /**
+ * 丢弃缓冲池里剩下的随机字节
+ */
+function clearRandomPool() {
+    randomPool.fill(0);
+    randomPoolOffset = randomPool.length;
+}
+
+/**
  * 使用拒绝采样生成 [0, max) 范围内的无偏安全随机整数
  */
 function getSecureRandomInt(max) {
@@ -453,7 +461,10 @@ function generatePassword() {
     sliderPendingGenerate = false;
 
     const activeCharsets = CHARSETS.filter((_, index) => config.complexity[index]);
-    if (activeCharsets.length === 0) return;
+    if (activeCharsets.length === 0) {
+        clearRandomPool();
+        return;
+    }
 
     resetCopyState();
 
@@ -467,6 +478,7 @@ function generatePassword() {
         }
         setCopyAvailability(false);
         setCopyFeedback('当前环境不支持安全随机数生成。', 'error');
+        clearRandomPool();
         return;
     }
 
@@ -505,8 +517,7 @@ function generatePassword() {
         setCopyFeedback('安全随机数生成失败，请更换浏览器或环境后重试。', 'error');
         return;
     } finally {
-        randomPool.fill(0);
-        randomPoolOffset = randomPool.length;
+        clearRandomPool();
     }
 
     const password = passwordChars.join('');
